@@ -1,0 +1,8 @@
+# OS
+.DS_Store
+
+# Local backup of the pre-refactor monolith (safety net, not source of truth)
+*.bak
+
+# Local-only Claude settings (keep launch.json, ignore machine-specific settings)
+.claude/settings.local.json
