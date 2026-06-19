@@ -82,11 +82,75 @@ const txData=[
 const TX_BADGE={purchase:['Purchase','var(--green)','rgba(11,168,74,.1)'],vote:['Vote','var(--blue)','rgba(61,107,255,.1)'],
   redemption:['Redemption','var(--gold)','rgba(255,182,0,.14)'],refund:['Refund','var(--teal)','rgba(0,230,196,.12)']};
 state.txTab='all';
+// fc_ledger.type → UI tab category + how to display the row.
+const LEDGER_MAP={
+  purchase:            {cat:'purchase',  t:'FC Purchase',     ic:'shopping_cart',        col:'var(--purple)',  bg:'var(--purple-a)'},
+  welcome_bonus:       {cat:'redemption',t:'Welcome Bonus',   ic:'celebration',          col:'var(--teal)',    bg:'rgba(0,230,196,.12)'},
+  daily_reward:        {cat:'redemption',t:'Daily Reward',    ic:'local_fire_department',col:'var(--live)',    bg:'rgba(238,16,69,.1)'},
+  referral_reward:     {cat:'redemption',t:'Referral Reward', ic:'group_add',            col:'var(--teal)',    bg:'rgba(0,230,196,.12)'},
+  achievement_reward:  {cat:'redemption',t:'Achievement',     ic:'emoji_events',         col:'var(--gold)',    bg:'rgba(255,182,0,.14)'},
+  vote_spend:          {cat:'vote',      t:'Vote Cast',       ic:'how_to_vote',          col:'var(--blue)',    bg:'rgba(61,107,255,.1)'},
+  vote_refund:         {cat:'refund',    t:'Vote Refund',     ic:'undo',                 col:'var(--green)',   bg:'rgba(11,168,74,.1)'},
+  prediction_stake:    {cat:'vote',      t:'Forecast Stake',  ic:'insights',             col:'var(--purple-2)',bg:'var(--purple-a)'},
+  prediction_payout:   {cat:'redemption',t:'Forecast Win',    ic:'emoji_events',         col:'var(--green)',   bg:'rgba(11,168,74,.1)'},
+  prediction_refund:   {cat:'refund',    t:'Forecast Refund', ic:'undo',                 col:'var(--green)',   bg:'rgba(11,168,74,.1)'},
+  cosmetic_purchase:   {cat:'redemption',t:'Profile Item',    ic:'auto_awesome',         col:'var(--purple)',  bg:'var(--purple-a)'},
+  merch_purchase:      {cat:'redemption',t:'Merch Redemption',ic:'redeem',               col:'var(--pink)',    bg:'rgba(255,32,101,.1)'},
+  treasury_contribution:{cat:'vote',     t:'Treasury',        ic:'savings',              col:'var(--blue)',    bg:'rgba(61,107,255,.1)'},
+  admin_adjust:        {cat:'redemption',t:'Adjustment',      ic:'tune',                 col:'var(--ink-3)',   bg:'var(--grey-bg)'}
+};
+let _txLedger=[], _txRange='30';
+// Pull the user's real FC ledger (every credit in/out) → the transaction history.
+async function loadTransactions(){
+  if(!state.user){ _txLedger=[]; renderTx(); return; }
+  try{
+    const {data,error}=await _sb.from('fc_ledger')
+      .select('amount,type,balance_after,description,created_at')
+      .order('created_at',{ascending:false}).limit(300);
+    if(error){ console.warn('[transactions]',error.message); renderTx(); return; }
+    _txLedger=(data||[]).map(r=>{
+      const m=LEDGER_MAP[r.type]||{cat:'redemption',t:r.type,ic:'receipt_long',col:'var(--ink-3)',bg:'var(--grey-bg)'};
+      const d=new Date(r.created_at), amt=Number(r.amount)||0;
+      let usd='', sub=r.description||'';
+      if(r.type==='purchase' && typeof fcPacks!=='undefined'){ const pk=fcPacks.find(p=>p.fc===amt); if(pk){usd=pk.price; sub=pk.name;} }
+      return { date:d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
+        time:d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
+        desc:m.t, sub, type:m.cat, amt, bal:Number(r.balance_after)||0,
+        usd, ic:m.ic, col:m.col, bg:m.bg, ts:+d };
+    });
+  }catch(e){ console.warn('[transactions]',e); }
+  renderTx();
+}
+state.txFilters={date:'all',type:'all',method:'all',status:'all'};
 function setTxTab(t){state.txTab=t;document.querySelectorAll('#txTabs .tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.txtab===t));renderTx();}
+function setTxRange(r){_txRange=r;renderTxSummary();}
+// "Filter Transactions" panel → read the four selects and re-render (resets to All tab so the
+// panel becomes the active filter). Payment Method maps to purchase (real money) vs Fan Credits.
+function applyTxFilters(){
+  const v=id=>{const el=document.getElementById(id);return el?el.value:'all';};
+  state.txFilters={date:v('fltDate'),type:v('fltType'),method:v('fltMethod'),status:v('fltStatus')};
+  state.txTab='all';document.querySelectorAll('#txTabs .tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.txtab==='all'));
+  renderTx();toast('Filters applied','filter_alt');
+}
+function resetTxFilters(){
+  ['fltDate','fltType','fltMethod','fltStatus'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='all';});
+  state.txFilters={date:'all',type:'all',method:'all',status:'all'};
+  renderTx();toast('Filters reset','restart_alt');
+}
 function renderTx(){
-  const list=txData.filter(x=>state.txTab==='all'||x.type===state.txTab);
+  const f=state.txFilters||{},now=Date.now();
+  const cut=(f.date&&f.date!=='all')?(f.date==='ytd'?+new Date(new Date().getFullYear(),0,1):now-(+f.date)*864e5):0;
+  const list=_txLedger.filter(x=>{
+    if(state.txTab!=='all'&&x.type!==state.txTab)return false;        // active tab
+    if(f.type&&f.type!=='all'&&x.type!==f.type)return false;          // panel type
+    if(cut&&x.ts<cut)return false;                                    // date range
+    if(f.method==='purchase'&&x.type!=='purchase')return false;       // paid with money
+    if(f.method==='fc'&&x.type==='purchase')return false;             // paid with FC
+    if(f.status==='pending')return false;                            // ledger entries are all completed
+    return true;
+  });
   document.getElementById('txList').innerHTML=list.length?list.map(t=>{
-    const [bl,bc,bg]=TX_BADGE[t.type];const pos=t.amt>0;
+    const bdg=TX_BADGE[t.type]||['Activity','var(--ink-3)','var(--grey-bg)'];const [bl,bc,bg]=bdg;const pos=t.amt>0;
     return `<div class="tx-row">
       <div class="tx-date">${t.date}<small>${t.time}</small></div>
       <div class="tx-desc"><div class="tx-ic" style="background:${t.bg};"><span class="material-icons-round" style="color:${t.col};">${t.ic}</span></div>
@@ -94,9 +158,27 @@ function renderTx(){
       <div class="tx-type"><span class="tx-badge" style="color:${bc};background:${bg};">${bl}</span></div>
       <div class="tx-amt" style="color:${pos?'var(--green)':'var(--live)'};">${pos?'+':''}${fmt(t.amt)} FC${t.usd?`<small>${t.usd}</small>`:''}</div>
       <div class="tx-bal">${fmt(t.bal)} FC</div>
-    </div>`;}).join(''):'<div class="empty-state"><div class="empty-icon"><span class="material-icons-outlined">receipt_long</span></div><div class="h3">No transactions</div></div>';
-  document.getElementById('txPager').innerHTML=['‹','1','2','3','…','12','›'].map((p,i)=>`<button class="pg-btn ${p==='1'?'active':''}" onclick="${/\d/.test(p)?`toast('Page ${p}','receipt_long')`:''}">${p}</button>`).join('');
-  document.getElementById('txChart').innerHTML=sparkline(21,300,120,true);
+    </div>`;}).join(''):`<div class="empty-state" style="padding:30px 0;"><div class="empty-icon"><span class="material-icons-outlined">receipt_long</span></div><div class="h3">${state.user?'No transactions yet':'Sign in to see transactions'}</div><div class="small" style="color:var(--ink-3);margin-top:6px;">${state.user?'Buy Fan Credits or place a forecast.':''}</div></div>`;
+  const pg=document.getElementById('txPager');if(pg)pg.innerHTML='';
+  renderTxSummary();
+}
+function renderTxSummary(){
+  const now=Date.now(), cut=_txRange==='all'?0:now-(+_txRange)*864e5;
+  const rows=_txLedger.filter(t=>t.ts>=cut);
+  const spent=rows.filter(t=>t.amt<0).reduce((s,t)=>s-t.amt,0);
+  const earned=rows.filter(t=>t.amt>0).reduce((s,t)=>s+t.amt,0);
+  const net=earned-spent;
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  set('txSpent',fmt(spent)+' FC'); set('txEarned',fmt(earned)+' FC');
+  const ne=document.getElementById('txNet');
+  if(ne){ ne.textContent=(net<0?'-':'+')+fmt(Math.abs(net))+' FC'; ne.style.color=net<0?'var(--live)':'var(--green)'; }
+  // balance trajectory over the range
+  const el=document.getElementById('txChart');if(!el)return;
+  const asc=[...rows].sort((a,b)=>a.ts-b.ts);
+  if(!asc.length){ el.innerHTML=''; return; }
+  const points=asc.map(t=>t.bal), n=asc.length, step=Math.max(1,Math.ceil(n/5));
+  const labels=asc.map((t,i)=>(i===0||i===n-1||i%step===0)?new Date(t.ts).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'');
+  el.innerHTML=trendSVG(points,labels,300,120);
 }
 
 
@@ -133,6 +215,8 @@ function addNotif(cat,icon,color,bg,t,s){
 function updateNotifBadges(){
   const n=state.unread;
   document.querySelectorAll('.notif-dot').forEach(d=>d.style.display=n>0?'block':'none');
+  // Bell icon: red-dot SVG when there are unread notifications, plain bell otherwise.
+  document.querySelectorAll('.bell-ico').forEach(b=>b.setAttribute('src',n>0?'assets/bell-dot.svg':'assets/bell.svg'));
   const sb=document.querySelector('.sb-link[data-nav="notifications"] .sb-badge');if(sb){sb.textContent=n;sb.style.display=n>0?'flex':'none';}
 }
 

@@ -1,20 +1,31 @@
 /* ════════ STATE ════════ */
 const state={balance:2450,votesToday:0,totalVotes:128,pos:'all',mtab:'all',ltab:'players',nf:'all',
- favs:new Set(['mbappe']),votingFor:null,backTo:'vote',
+ favs:new Set((()=>{try{return JSON.parse(localStorage.getItem('wc26_favs'))||[];}catch(e){return[];}})()),votingFor:null,backTo:'vote',
  myVotes:[{player:'Kylian Mbappé',short:'KM',fc:850,date:'May 16, 2026'},{player:'Jude Bellingham',short:'JB',fc:370,date:'May 16, 2026'},{player:'Vinícius Jr',short:'VJ',fc:210,date:'May 13, 2026'}],
  xp:2410,streak:6,dailyClaimed:false,unread:3,upStreak:{},user:null,profile:null,
+ hasPass:false,myVote:null, // Supporter Pass + the user's single (changeable-once) vote
  predictions:[
    {market:'Who lifts the trophy?',pick:'Argentina',fc:300,status:'open',sidePct:48,curPct:48},
    {market:'Who wins the Golden Boot?',pick:'Haaland',fc:150,status:'open',sidePct:45,curPct:45},
    {market:'Spain to top Group E',pick:'Yes',fc:200,status:'won',reward:430,sidePct:62,curPct:62}
  ]};
 
+// Ranking order: most votes first, then last name A→Z. So with no votes the board is
+// alphabetical (and diverse), and players climb to 1/2/3 as real votes come in.
+function rankCmp(a,b){return (b.votes-a.votes)||String(a.last||a.name||'').localeCompare(String(b.last||b.name||''));}
+
 
 /* real futuristic flag chips */
-const FLAGKEY={'France':'France','Croatia':'Croatia','England':'England','Brazil':'Brazil','Norway':'Norway','Germany':'Germany','Spain':'Spain','Argentina':'Argentina','Morocco':'Morocco','Netherlands':'Netherlands','Belgium':'Belgium','Japan':'Japan','Netherlands ':'Netherlands'};
-function flagImg(country,h){const k=FLAGKEY[country];const u=k&&ASSETS.flags[k];h=h||14;
-  if(u)return `<img class="flag-img" src="${u}" alt="${country}" style="height:${h}px;">`;
+// Real flag images in assets/flags/*.png. Country name (as in the DB) → file name.
+// Full 50-flag pack present (incl. Colombia/Iran/IvoryCoast); flagFallback shows an
+// emoji only if a country isn't mapped here.
+const FLAG_FILE={Algeria:'Algeria',Argentina:'Argentina',Australia:'Australia',Austria:'Austria',Belgium:'Belgium','Bosnia & Herzegovina':'Bosnia',Brazil:'Brazil',Canada:'Canada','Cape Verde Islands':'CapoVerde',Colombia:'Colombia','Congo DR':'RDCongo',Croatia:'Croatia','Curaçao':'Curacao',Czechia:'Czechia',Ecuador:'Ecuador',Egypt:'Egypt',England:'England',France:'France',Germany:'Germany',Ghana:'Ghana',Haiti:'Haiti',Iran:'Iran',Iraq:'Iraq',Ireland:'Ireland','Ivory Coast':'IvoryCoast',Japan:'Japon',Jordan:'Jordan',Mexico:'Mexico',Morocco:'Morocco',Netherlands:'Netherlands','New Zealand':'NewZealand','North Korea':'NorthKorea',Norway:'Norway',Panama:'Panama',Paraguay:'Paraguay',Portugal:'Portugal',Qatar:'Qatar','Saudi Arabia':'SaudiArabia',Scotland:'Scotland',Senegal:'Senegal','South Africa':'SouthAfrica','South Korea':'SouthKorea',Spain:'Spain',Sweden:'Sweden',Switzerland:'Switzerland',Tunisia:'Tunisia','Türkiye':'Turkey',Turkey:'Turkey',USA:'UnitedStatesofAmerica','United States':'UnitedStatesofAmerica',Uruguay:'Uruguay',Uzbekistan:'Ouzbekistan'};
+function flagImg(country,h){const f=FLAG_FILE[country];h=h||14;
+  if(f)return `<img class="flag-img" src="assets/flags/${f}.png" alt="${country}" style="height:${h}px;" onerror="flagFallback(this,'${String(country).replace(/'/g,'')}')">`;
   return '';}
+// If a flag image is missing/fails, swap it for the country's emoji flag (no broken icon).
+function flagFallback(img,country){img.onerror=null;const e=(typeof flagEmoji==='function'?flagEmoji(country):'')||'';
+  if(e){const s=document.createElement('span');s.className='flag';s.style.fontSize=((parseInt(img.style.height,10)||14))+'px';s.textContent=e;img.replaceWith(s);}else img.remove();}
 
 const fmt=n=>n.toLocaleString('en-US');
 const fcCoin='<img class="fc-coin" src="'+ASSETS.fc+'" alt="FC">';
@@ -36,11 +47,17 @@ function go(v){
   if(window.innerWidth<1024)closeMenu();
   window.scrollTo({top:0,behavior:'instant'});
   setTimeout(observeReveals,30);
+  if(v==='transactions'&&typeof loadTransactions==='function')loadTransactions(); // fresh ledger
 }
 
 /* ════════ COUNTDOWN + TICKER ════════ */
-const closeAt=Date.now()+(12*864e5+8*36e5+47*6e4+19e3);
+// Voting closes at the FIFA World Cup 2026 final (MetLife Stadium, Jul 19, 2026).
+// Fixed real date → the countdown ticks down live from the current date/time.
+const VOTING_CLOSES=new Date('2026-07-19T19:00:00Z');
+const closeAt=VOTING_CLOSES.getTime();
 function tick(){
+  const vcd=document.getElementById('votingClosesDate');
+  if(vcd&&!vcd.textContent)vcd.textContent='· '+VOTING_CLOSES.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'});
   let d=Math.max(0,closeAt-Date.now());
   const dd=Math.floor(d/864e5);d-=dd*864e5;
   const hh=Math.floor(d/36e5);d-=hh*36e5;
@@ -51,8 +68,8 @@ function tick(){
   const xc=document.getElementById('xiCountdown');if(xc){let g=Math.max(0,closeAt-Date.now());const gd=Math.floor(g/864e5),gh=Math.floor((g-gd*864e5)/36e5);xc.textContent=gd+'d '+String(gh).padStart(2,'0')+'h';}
 }
 setInterval(tick,1000); // first immediate tick() is invoked from init.js (after flipIfChanged is defined)
-let liveTotal=248532163;
-setInterval(()=>{liveTotal+=Math.floor(Math.random()*900)+100;document.getElementById('totalVotes').textContent=fmt(liveTotal);},2500);
+// "Total Votes Cast" = the real sum of every player's votes (updated by updateTotalVotes()
+// whenever vote counts refresh). No fake auto-incrementing counter.
 
 /* ════════ SHARED PIECES ════════ */
 const avatarHTML=(p,size)=>{const s=size||42;const fh=Math.max(11,Math.round(s*.34));const fi=flagImg(p.country,fh);return `<div class="avatar" style="width:${s}px;height:${s}px;font-size:${Math.round(s*.32)}px;">${p.short}${fi?`<span class="flag-chip">${fi}</span>`:`<span class="flag">${p.flag}</span>`}</div>`;};

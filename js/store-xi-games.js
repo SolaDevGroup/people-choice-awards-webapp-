@@ -122,14 +122,38 @@ function submitXI(){
 
 
 /* ════════ GAMES (schedule + highlights) ════════ */
-const fixtures=[
-  {a:'USA',b:'Paraguay',af:'USA',bf:null,time:'04:00',group:'D',venue:'SoFi Stadium, Los Angeles',date:'Thu, Jun 12, 2026',kick:'8:00 PM',live:false},
-  {a:'Haiti',b:'Scotland',af:null,bf:null,time:'04:00',group:'A',venue:'NRG Stadium, Houston',date:'Fri, Jun 13, 2026',kick:'12:00 PM',live:false},
-  {a:'Mexico',b:'South Africa',af:'Mexico',bf:null,time:'22:00',group:'F',venue:'AT&T Stadium, Dallas',date:'Sat, Jun 14, 2026',kick:'3:00 PM',live:false},
-  {a:'Qatar',b:'Switzerland',af:null,bf:'Switzerland',time:'22:00',group:'B',venue:'Lusail Stadium, Lusail',date:'Sat, Jun 14, 2026',kick:'11:00 AM',live:false},
-  {a:'Brazil',b:'Morocco',af:'Brazil',bf:'Morocco',time:'01:00',group:'C',venue:'MetLife Stadium, New York',date:'Sun, Jun 15, 2026',kick:'1:00 PM',live:true},
-  {a:'Germany',b:'Japan',af:'Germany',bf:'Japan',time:'05:00',group:'E',venue:'Mercedes-Benz Stadium, Atlanta',date:'Sun, Jun 15, 2026',kick:'7:00 PM',live:false},
+// Fallback schedule; replaced by real WC2026 fixtures from Supabase in loadCatalog.
+let fixtures=[
+  {a:'USA',b:'Paraguay',stage:'Group Stage',venue:'SoFi Stadium, Los Angeles',kickoff_at:'2026-06-12T20:00:00Z',status:'scheduled',home_score:null,away_score:null},
+  {a:'Brazil',b:'Morocco',stage:'Group Stage',venue:'MetLife Stadium, New York',kickoff_at:'2026-06-15T13:00:00Z',status:'live',home_score:1,away_score:0},
+  {a:'Germany',b:'Japan',stage:'Group Stage',venue:'Mercedes-Benz Stadium, Atlanta',kickoff_at:'2026-06-15T19:00:00Z',status:'scheduled',home_score:null,away_score:null},
 ];
+// name → flag emoji (regional-indicator for nations; subdivisions hardcoded)
+const NAT_ISO2={Algeria:'DZ',Argentina:'AR',Australia:'AU',Austria:'AT',Belgium:'BE','Bosnia & Herzegovina':'BA',Brazil:'BR',Canada:'CA','Cape Verde Islands':'CV',Colombia:'CO','Congo DR':'CD',Croatia:'HR','Curaçao':'CW',Czechia:'CZ',Ecuador:'EC',Egypt:'EG',France:'FR',Germany:'DE',Ghana:'GH',Haiti:'HT',Iran:'IR',Iraq:'IQ','Ivory Coast':'CI',Japan:'JP',Jordan:'JO',Mexico:'MX',Morocco:'MA',Netherlands:'NL','New Zealand':'NZ',Norway:'NO',Panama:'PA',Paraguay:'PY',Portugal:'PT',Qatar:'QA','Saudi Arabia':'SA',Senegal:'SN','South Africa':'ZA','South Korea':'KR',Spain:'ES',Sweden:'SE',Switzerland:'CH',Tunisia:'TN','Türkiye':'TR',Turkey:'TR',USA:'US','United States':'US',Uruguay:'UY',Uzbekistan:'UZ'};
+const NAT_SPECIAL={England:'🏴\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}',Scotland:'🏴\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}',Wales:'🏴\u{E0067}\u{E0062}\u{E0077}\u{E006C}\u{E0073}\u{E007F}'};
+function flagEmoji(name){
+  if(NAT_SPECIAL[name])return NAT_SPECIAL[name];
+  const c=NAT_ISO2[name];
+  return c?String.fromCodePoint(...[...c].map(ch=>0x1F1E6+ch.charCodeAt(0)-65)):'';
+}
+function fixtureLive(f){
+  if(f.status==='finished')return false;
+  if(f.status==='live')return true;
+  if(!f.kickoff_at)return false;
+  const k=new Date(f.kickoff_at).getTime();
+  return Date.now()>=k && Date.now()<=k+2.5*3600e3; // within a ~2.5h match window
+}
+function fmtKickoff(iso){const d=new Date(iso);return isNaN(d)?{date:'TBD',time:''}:{date:d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}),time:d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})};}
+function fixtureBig(f,live){
+  if(f.status==='finished')return{v:`${f.home_score??0} - ${f.away_score??0}`,lbl:'FULL TIME'};
+  if(live)return{v:`${f.home_score??0} - ${f.away_score??0}`,lbl:'LIVE'};
+  const diff=f.kickoff_at?new Date(f.kickoff_at).getTime()-Date.now():0;
+  if(!f.kickoff_at)return{v:'TBD',lbl:''};
+  if(diff<=0)return{v:'KICK OFF',lbl:''};
+  const h=Math.floor(diff/3600e3),m=Math.floor((diff%3600e3)/60e3);
+  if(h>=48)return{v:`${Math.floor(h/24)}d ${h%24}h`,lbl:'TO KICKOFF'};
+  return{v:`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`,lbl:'HRS · MINS'};
+}
 // ESPN FC — game highlights only (https://www.youtube.com/@ESPNFC/videos)
 const ESPNFC='https://www.youtube.com/@ESPNFC/videos';
 const highlights=[
@@ -141,44 +165,106 @@ const highlights=[
   {a:'Haiti',b:'Scotland',score:'1 - 2',title:'Haiti vs Scotland · Group Stage Highlights',dur:'7:58',q:'1080p'}
 ];
 state.gtab='schedule';
+/* ---- FIFA YouTube highlights (real videos, inline player) ---- */
+const FIFA_UPLOADS='UUpcTrCXblq78GZrTUTLWeBw';            // FIFA channel uploads playlist
+const FIFA_URL='https://www.youtube.com/@fifa/videos';
+let ytHighlights=[], ytLoaded=false;
+const htmlEsc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+// Uses a YouTube Data API key; falls back to MAP_KEY if YouTube Data API is enabled on it.
+function ytKey(){try{if(YOUTUBE_KEY)return YOUTUBE_KEY;}catch(e){}try{if(YT_KEY)return YT_KEY;}catch(e){}try{if(MAP_KEY)return MAP_KEY;}catch(e){}return'';}
+const bestThumb=t=>t?((t.maxres||t.standard||t.high||t.medium||t.default||{}).url):'';
+// NOTE: FIFA syndication-blocks embedded playback on every World Cup upload (IFrame API
+// returns error 150 for all of them) — this is a global broadcast-rights restriction, not
+// domain-specific, so inline <iframe> playback is impossible. The grid therefore opens each
+// video on YouTube in a new tab; we keep crisp maxres thumbnails for the card art.
+async function loadHighlights(){
+  ytLoaded=true;const key=ytKey();if(!key)return;
+  try{
+    const r=await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&maxResults=50&playlistId=${FIFA_UPLOADS}&key=${encodeURIComponent(key)}`);
+    const j=await r.json();
+    if(j.error){console.warn('[highlights] YouTube Data API:',j.error.message);return;}
+    let items=(j.items||[]).map(it=>({
+      id:(it.contentDetails&&it.contentDetails.videoId)||(it.snippet&&it.snippet.resourceId&&it.snippet.resourceId.videoId),
+      title:it.snippet&&it.snippet.title,
+      thumb:bestThumb(it.snippet&&it.snippet.thumbnails)
+    })).filter(v=>v.id&&!/#shorts/i.test(v.title||''));
+    // Keep only public videos + upgrade thumbnails to the highest available resolution.
+    const ids=items.map(v=>v.id).slice(0,50).join(',');
+    try{
+      const vr=await fetch(`https://www.googleapis.com/youtube/v3/videos?part=status,snippet&id=${ids}&key=${encodeURIComponent(key)}`);
+      const vj=await vr.json();
+      if(!vj.error&&vj.items){
+        const ok=new Set(),betterThumb={};
+        vj.items.forEach(v=>{
+          if((v.status||{}).privacyStatus==='public'){ok.add(v.id);betterThumb[v.id]=bestThumb(v.snippet&&v.snippet.thumbnails);}
+        });
+        items=items.filter(v=>ok.has(v.id)).map(v=>({...v,thumb:betterThumb[v.id]||v.thumb}));
+      }
+    }catch(e){/* if status check fails, fall back to unfiltered list */}
+    const hl=items.filter(v=>/highlight/i.test(v.title||''));
+    ytHighlights=(hl.length?hl:items).slice(0,12);
+    if(state.gtab==='highlights')renderGames();
+  }catch(e){console.warn('[highlights] load failed:',e);}
+}
+// FIFA disables embedded playback on every WC upload (IFrame error 150), so open the video
+// on YouTube in a new tab rather than showing YouTube's "blocked on this website" screen.
+function playHighlight(id){
+  window.open(`https://www.youtube.com/watch?v=${id}`,'_blank','noopener');
+}
 function setGamesTab(t){state.gtab=t;document.querySelectorAll('#gamesTabs .tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.gtab===t));
   document.getElementById('gamesSchedule').style.display=t==='schedule'?'':'none';
-  document.getElementById('gamesHighlights').style.display=t==='highlights'?'':'none';}
-function fixtureFlag(name){const fi=flagImg(name,30);return fi||`<span style="font-size:26px">🏳️</span>`;}
+  document.getElementById('gamesHighlights').style.display=t==='highlights'?'':'none';
+  if(t==='highlights'&&!ytLoaded)loadHighlights();}
+function fixtureFlag(name){const fi=flagImg(name,30);if(fi)return fi;const e=flagEmoji(name);return `<span style="font-size:26px">${e||'🏳️'}</span>`;}
 function renderGames(){
-  document.getElementById('gamesSchedule').innerHTML=`<div class="fixtures-grid">${fixtures.map(f=>`
-    <div class="fixture-card ${f.live?'islive':''}">
-      ${f.live?'<span class="fixture-live">● LIVE</span>':''}
+  document.getElementById('gamesSchedule').innerHTML=`<div class="fixtures-grid">${fixtures.map(f=>{
+    const live=fixtureLive(f),big=fixtureBig(f,live),k=fmtKickoff(f.kickoff_at);
+    return `<div class="fixture-card ${live?'islive':''}">
+      ${live?'<span class="fixture-live">● LIVE</span>':''}
       <div class="fixture-teams">
         <div class="fixture-team"><div class="fixture-flag">${fixtureFlag(f.a)}</div><div class="fixture-name">${f.a}</div></div>
         <div class="fixture-vs">VS</div>
         <div class="fixture-team"><div class="fixture-flag">${fixtureFlag(f.b)}</div><div class="fixture-name">${f.b}</div></div>
       </div>
-      <div class="fixture-time">${f.time}<span class="fixture-time-lbl">${f.time.endsWith('00')?'HRS · MINS':''}</span></div>
-      <div class="fixture-meta">Group Stage · Group ${f.group}</div>
-      <div class="fixture-venue"><span class="material-icons-outlined">stadium</span>${f.venue}</div>
+      <div class="fixture-time">${big.v}${big.lbl?`<span class="fixture-time-lbl">${big.lbl}</span>`:''}</div>
+      <div class="fixture-meta">${f.stage||'World Cup 2026'}</div>
+      <div class="fixture-venue"><span class="material-icons-outlined">stadium</span>${f.venue||'TBD'}</div>
       <div class="fixture-foot">
-        <span><span class="material-icons-outlined">event</span>${f.date}</span>
-        <span><span class="material-icons-outlined">schedule</span>${f.kick}</span>
+        <span><span class="material-icons-outlined">event</span>${k.date}</span>
+        <span><span class="material-icons-outlined">schedule</span>${k.time}</span>
       </div>
-    </div>`).join('')}</div>`;
-  document.getElementById('gamesHighlights').innerHTML=`
-    <div class="hl-channel"><span class="material-icons-round">verified</span><div><div class="hl-ch-name">ESPN FC</div><div class="caption" style="color:var(--ink-3);">Official match highlights · 1080p</div></div>
-      <a class="btn btn-secondary btn-sm" href="${ESPNFC}" target="_blank" rel="noopener" style="margin-left:auto;">Visit channel</a></div>
-    <div class="hl-grid">${highlights.map(h=>{const fa=flagImg(h.a,26),fb=flagImg(h.b,26);return `
-    <a class="hl-card" href="${ESPNFC}" target="_blank" rel="noopener">
-      <div class="hl-thumb hl-match">
-        <span class="hl-q">${h.q}</span><span class="hl-dur">${h.dur}</span>
-        <div class="hl-match-inner">
-          <div class="hl-team">${fa||''}<span>${h.a}</span></div>
-          <div class="hl-score">${h.score}</div>
-          <div class="hl-team">${fb||''}<span>${h.b}</span></div>
+    </div>`;}).join('')}</div>`;
+  const hh=document.getElementById('gamesHighlights');if(!hh)return;
+  const head=`<div class="hl-channel"><span class="material-icons-round">verified</span><div><div class="hl-ch-name">FIFA</div><div class="caption" style="color:var(--ink-3);">Official World Cup highlights</div></div>
+      <a class="btn btn-secondary btn-sm" href="${FIFA_URL}" target="_blank" rel="noopener" style="margin-left:auto;">Visit channel</a></div>`;
+  if(ytHighlights.length){
+    // Real FIFA videos — FIFA blocks embedded playback, so cards open the video on YouTube.
+    hh.innerHTML=head+`<div class="hl-grid">${ytHighlights.map(v=>`
+      <a class="hl-card" href="https://www.youtube.com/watch?v=${v.id}" target="_blank" rel="noopener" style="cursor:pointer;">
+        <div class="hl-thumb" style="background-image:url('${v.thumb}')">
+          <span class="hl-play"><span class="material-icons-round">play_arrow</span></span>
         </div>
-        <span class="hl-play"><span class="material-icons-round">play_arrow</span></span>
-      </div>
-      <div class="hl-body"><div class="hl-title">${h.title}</div>
-        <div class="hl-ch"><span class="material-icons-round">verified</span>ESPN FC</div></div>
-    </a>`;}).join('')}</div>
-    <p class="caption" style="color:var(--ink-4);text-align:center;margin-top:14px;">Game highlights only · opens on ESPN FC's official YouTube channel</p>`;
+        <div class="hl-body"><div class="hl-title">${htmlEsc(v.title)}</div>
+          <div class="hl-ch"><span class="material-icons-round">verified</span>FIFA</div></div>
+      </a>`).join('')}</div>
+      <p class="caption" style="color:var(--ink-4);text-align:center;margin-top:14px;">Tap a video to watch it on YouTube · official FIFA channel</p>`;
+  }else{
+    // Fallback (no YouTube Data API key yet): cards link out to the FIFA channel.
+    hh.innerHTML=head+`<div class="hl-grid">${highlights.map(h=>`
+      <a class="hl-card" href="${FIFA_URL}" target="_blank" rel="noopener">
+        <div class="hl-thumb hl-match">
+          <span class="hl-q">${h.q}</span><span class="hl-dur">${h.dur}</span>
+          <div class="hl-match-inner">
+            <div class="hl-team">${flagImg(h.a,26)||''}<span>${h.a}</span></div>
+            <div class="hl-score">${h.score}</div>
+            <div class="hl-team">${flagImg(h.b,26)||''}<span>${h.b}</span></div>
+          </div>
+          <span class="hl-play"><span class="material-icons-round">play_arrow</span></span>
+        </div>
+        <div class="hl-body"><div class="hl-title">${h.title}</div>
+          <div class="hl-ch"><span class="material-icons-round">verified</span>FIFA</div></div>
+      </a>`).join('')}</div>
+      <p class="caption" style="color:var(--ink-4);text-align:center;margin-top:14px;">Add a YouTube Data API key to stream FIFA's latest highlights in-app</p>`;
+  }
 }
 

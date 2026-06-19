@@ -21,16 +21,19 @@ async function createAccount(){
   if(!suName.value.trim()||!suEmail.value.trim()||!suPass.value){toast('Please fill in all fields','error');return;}
   if(!suTerms.checked){toast('Please accept the Terms of Use','error');return;}
   const btn=document.getElementById('suBtn');btn.textContent='Creating…';btn.disabled=true;
+  const country=(suCountry&&suCountry.value)||null;
   const {data,error}=await _sb.auth.signUp({
     email:suEmail.value.trim(),
     password:suPass.value,
-    options:{data:{display_name:suName.value.trim()}}
+    options:{data:{display_name:suName.value.trim(),country}}
   });
   btn.textContent='Create Account';validateSignup();
   if(error){toast(error.message,'error');return;}
   suPass.value='';validateSignup();
   if(data.session){
     // Email confirmation disabled → user is signed in immediately.
+    // Persist the chosen country on the profile so votes attribute to it (map).
+    if(country)await _sb.from('profiles').update({country_code:country}).eq('id',data.user.id);
     toast('Welcome to WC26!','celebration');
     go('home');
   }else{
@@ -54,6 +57,16 @@ async function logIn(){
   go('home');
 }
 
+// Google OAuth — redirects to Google, returns to the app; detectSessionInUrl +
+// onAuthStateChange then load the profile. handle_new_user creates the row.
+async function signInWithGoogle(){
+  const {error}=await _sb.auth.signInWithOAuth({
+    provider:'google',
+    options:{redirectTo:location.origin+location.pathname}
+  });
+  if(error)toast(error.message,'error');
+}
+
 // Programmatic sign-in (kept for callers that already have credentials).
 async function signIn(email,password){
   const {data,error}=await _sb.auth.signInWithPassword({email,password});
@@ -64,7 +77,9 @@ async function signIn(email,password){
 
 async function signOut(){
   await _sb.auth.signOut();
-  state.user=null;state.profile=null;state.balance=0;state.totalVotes=0;syncBalance();renderAuthUI();
+  state.user=null;state.profile=null;state.balance=0;state.totalVotes=0;state.hasPass=false;state.myVote=null;syncBalance();renderAuthUI();
+  loadUserCosmetics(); // clears owned/equipped back to the signed-out baseline
+  loadPredictions();   // clears the forecast history to the signed-out state
   toast('Signed out','logout');go('home');
 }
 
@@ -72,9 +87,168 @@ async function loadProfile(uid){
   const {data}=await _sb.from('profiles').select('*').eq('id',uid).single();
   if(!data)return;
   state.profile=data;
+  // Backfill country from signup metadata if the profile lacks it (email-confirm
+  // signups don't have a session when createAccount runs, so it's saved here).
+  const metaCountry=state.user&&state.user.user_metadata&&state.user.user_metadata.country;
+  if(!data.country_code&&metaCountry){
+    await _sb.from('profiles').update({country_code:metaCountry}).eq('id',uid);
+    data.country_code=metaCountry;state.profile.country_code=metaCountry;
+  }
   state.balance=data.fc_balance;
   state.totalVotes=data.reputation_xp;
   syncBalance();renderAuthUI();
+  await loadUserCosmetics();
+  await loadVoteState();            // pass + current vote → button states
+  if(typeof renderVoteList==='function')renderVoteList();
+  loadPredictions();                // the user's real forecast history
+  if(typeof loadTransactions==='function')loadTransactions(); // real FC ledger
+  // The support map needs a country. If this account never set one (e.g. Google sign-up),
+  // ask once after the splash so their vote can be plotted.
+  const metaC=state.user&&state.user.user_metadata&&state.user.user_metadata.country;
+  if(!state.profile.country_code && !metaC && !state._askedCountry && typeof ensureVoterCountry==='function'){
+    state._askedCountry=true;
+    setTimeout(()=>{ if(!state.profile.country_code) ensureVoterCountry(); },5600);
+  }
+}
+// Whether the user holds the pass + which player they've voted for (and if they've
+// used their one allowed change). Drives every Vote button's enabled/disabled state.
+async function loadVoteState(){
+  state.hasPass=false; state.myVote=null;
+  if(!state.user)return;
+  try{
+    const [hp,mv]=await Promise.all([_sb.rpc('has_supporter_pass'),_sb.rpc('my_pass_vote')]);
+    state.hasPass=!!(hp&&hp.data);
+    const v=mv&&mv.data;
+    state.myVote=(v&&v.player_id)?{player_id:v.player_id,changes_used:Number(v.changes_used)||0}:null;
+  }catch(e){console.warn('[vote-state]',e);}
+}
+// The user's REAL forecasts (predictions table) → the Prediction History list, with their
+// pick, stake, status, server potential payout, and live odds movement.
+async function loadPredictions(){
+  if(!state.user){ state.predictions=[]; if(typeof renderPredHistory==='function')renderPredHistory(); return; }
+  try{
+    const {data,error}=await _sb.from('predictions')
+      .select('stake_fc,entry_pct,potential_payout,reward_fc,status,created_at, market:markets!market_id(id,title), opt:market_options!option_id(label,side)')
+      .order('created_at',{ascending:false});
+    if(error){ console.warn('[predictions] load failed:', error.message); return; }
+    state.predictions=(data||[]).map(r=>{
+      const mid=r.market&&r.market.id;
+      const mk=(typeof markets!=='undefined')&&markets.find(x=>x.dbId===mid);
+      const sideIdx=(r.opt&&r.opt.side==='b')?1:0;
+      const entry=Number(r.entry_pct)||50;
+      const curPct=(mk&&typeof marketPcts==='function')?marketPcts(mk)[sideIdx]:entry;
+      return {
+        market:(r.market&&r.market.title)||'Prediction',
+        pick:(r.opt&&r.opt.label)||'',
+        fc:Number(r.stake_fc||0),
+        status:r.status,                 // 'open' | 'won' | 'lost'
+        sidePct:entry, curPct,           // your entry odds → current odds (true line movement)
+        reward:Number(r.reward_fc||0),
+        potential:Number(r.potential_payout||0)
+      };
+    });
+    if(typeof renderPredHistory==='function')renderPredHistory();
+  }catch(e){ console.warn('[predictions]',e); }
+}
+// Real-time odds refresh: re-read the actual market pool from the DB so odds update when
+// OTHER users forecast — and stay perfectly still when nobody does. No random simulation.
+async function refreshOdds(){
+  if(document.hidden)return;                                  // skip when tab not visible
+  if(document.querySelector('.modal-backdrop.open'))return;   // don't disrupt an open modal
+  try{
+    const {data,error}=await _sb.from('markets').select('*, market_options!market_id(*)').order('created_at',{ascending:true});
+    if(!error && data && data.length && typeof mapMarket==='function'){
+      markets=data.map(mapMarket);
+      if(typeof renderMarkets==='function'){ renderMarkets(); renderHomeMarkets(); }
+    }
+    loadPredictions(); // recompute live odds + line movement from the refreshed pool
+  }catch(e){}
+}
+// Load the match schedule from Supabase (live-first, then soonest upcoming, then finished).
+async function loadFixtures(){
+  try{
+    const fxRes=await _sb.from('fixtures').select('*').order('kickoff_at',{ascending:true});
+    if(fxRes.data && fxRes.data.length){
+      const mapped=fxRes.data.map(r=>({a:r.home_team_code,b:r.away_team_code,kickoff_at:r.kickoff_at,stage:r.stage,venue:r.venue,status:r.status,home_score:r.home_score,away_score:r.away_score}));
+      const rank=f=>fixtureLive(f)?0:(f.status==='finished'?2:1);
+      mapped.sort((a,b)=>{const ra=rank(a),rb=rank(b);if(ra!==rb)return ra-rb;const ta=+new Date(a.kickoff_at),tb=+new Date(b.kickoff_at);return ra===2?tb-ta:ta-tb;});
+      fixtures=mapped; catalog.fixturesLoaded=true;
+    } else if(fxRes.error){ console.warn('[fixtures] load failed, keeping seed:', fxRes.error.message); }
+  }catch(e){ console.warn('[fixtures]',e); }
+}
+// Keep the schedule live: re-read fixtures + re-render so LIVE badges, scores and countdowns
+// stay current (live status is computed against the clock, so this also flips badges on/off).
+async function refreshFixtures(){
+  if(document.hidden)return;
+  await loadFixtures();
+  if(typeof renderHomeGames==='function')renderHomeGames();
+  if(typeof renderGames==='function')renderGames();
+}
+// Live leaderboard: re-read real vote counts (so OTHER users' votes move the ranks),
+// show the movement vs the current baseline, then re-baseline for the next 60s window.
+async function refreshLeaderboard(){
+  if(document.hidden)return;
+  try{
+    await loadVoteCounts();
+    players.sort(rankCmp);
+    if(typeof renderLeaderboard==='function')renderLeaderboard(); // render movement vs baseline
+    // keep the vote-driven home sections in sync with other users' votes too
+    [ 'renderHomePodium','renderHomeTrending','renderFeatured','renderHomePulse','renderSupportByCountry' ].forEach(fn=>{ if(typeof window[fn]==='function')window[fn](); });
+    if(typeof captureLbBaseline==='function')captureLbBaseline(); // commit → next window
+  }catch(e){}
+}
+// Overlay each player's live supporter count (pass votes) onto players[].votes.
+async function loadVoteCounts(){
+  try{
+    const {data,error}=await _sb.from('pass_vote_counts').select('player_id,votes');
+    if(error||!data)return;
+    const m={}; data.forEach(r=>{ m[r.player_id]=Number(r.votes)||0; });
+    players.forEach(p=>{ if(p.dbId) p.votes=m[p.dbId]||0; });
+    updateTotalVotes(); // "Total Votes Cast" = sum of all players' real votes
+  }catch(e){/* tally view not deployed yet — keep existing counts */}
+}
+// Render the real "Total Votes Cast" total on the home page.
+function updateTotalVotes(){
+  const el=document.getElementById('totalVotes'); if(!el) return;
+  const total=(typeof players!=='undefined') ? players.reduce((s,p)=>s+(Number(p.votes)||0),0) : 0;
+  el.textContent=fmt(total);
+}
+
+// ---- Cosmetics: catalogue map (code<->uuid) + per-user ownership/equipped ----
+// The cosmetics table mirrors the 144 frontend custItems by `code`. We map each
+// item's dbId (uuid) so buy_cosmetic/equip_cosmetic can reference real rows, and
+// translate owned/equipped uuids back to codes for the UI.
+function reRenderCosmetics(){
+  if(typeof renderCust==='function'){renderCust();renderProfile();renderProfileHero();updateChromeAvatars();}
+}
+async function loadCosmeticCatalog(){
+  if(catalog.cosmeticById&&Object.keys(catalog.cosmeticById).length)return; // idempotent
+  const {data,error}=await _sb.from('cosmetics').select('id,code');
+  if(error||!data){console.warn('[cosmetics] catalog load failed:',error&&error.message);return;}
+  catalog.cosmeticById={};catalog.cosmeticByCode={};
+  data.forEach(c=>{catalog.cosmeticById[c.id]=c.code;catalog.cosmeticByCode[c.code]=c.id;});
+  if(typeof custItems!=='undefined')custItems.forEach(i=>{i.dbId=catalog.cosmeticByCode[i.id]||null;});
+}
+async function loadUserCosmetics(){
+  if(!state.user){
+    state.ownedCust=new Set();
+    state.equipped={avatar:null,decoration:null,nameplate:null,banner:null};
+    reRenderCosmetics();return;
+  }
+  await loadCosmeticCatalog();
+  const [own,eq]=await Promise.all([
+    _sb.from('user_cosmetics').select('cosmetic_id'),
+    _sb.from('user_equipped').select('avatar_id,decoration_id,nameplate_id,banner_id').maybeSingle()
+  ]);
+  if(own.data)state.ownedCust=new Set(own.data.map(r=>catalog.cosmeticById[r.cosmetic_id]).filter(Boolean));
+  const e=eq.data||{};
+  state.equipped={
+    avatar:catalog.cosmeticById[e.avatar_id]||null,
+    decoration:catalog.cosmeticById[e.decoration_id]||null,
+    nameplate:catalog.cosmeticById[e.nameplate_id]||null,
+    banner:catalog.cosmeticById[e.banner_id]||null
+  };
+  reRenderCosmetics();
 }
 
 // ---- Auth gate: call at the top of any user-dependent action ----
@@ -127,7 +301,7 @@ function renderAuthUI(){
 _sb.auth.onAuthStateChange(async (event,session)=>{
   state.user=session?session.user:null;
   if(session){await loadProfile(session.user.id);}
-  else{state.profile=null;state.balance=0;syncBalance();}
+  else{state.profile=null;state.balance=0;syncBalance();loadUserCosmetics();}
   renderAuthUI();
 });
 
@@ -183,7 +357,7 @@ function mapPlayer(row, rankByPlayer){
 function mapMarket(row){
   const options = (row.market_options||[])
     .slice().sort((a,b)=>(a.sort||0)-(b.sort||0))
-    .map(o=>({ id:o.id, n:o.label, p:Number(o.implied_pct||0), pid:o.player_id||undefined }));
+    .map(o=>({ id:o.id, n:o.label, p:Number(o.implied_pct||0), alloc:Number(o.fc_allocated||0), pid:o.player_id||undefined }));
   const cat = row.subject_type==='team' ? 'country'
             : row.subject_type==='tournament' ? 'tournament' : 'player';
   return {
@@ -200,15 +374,30 @@ function mapMarket(row){
 }
 
 // Fetch the public catalog and re-render. Safe to call anytime; never throws.
+// Fetch every player + nested stats, paging past PostgREST's 1000-row cap.
+async function fetchAllPlayers(){
+  const all=[]; const size=1000;
+  for(let from=0;;from+=size){
+    const {data,error}=await _sb.from('players').select('*, player_stats(*)').range(from,from+size-1);
+    if(error) return {data:all.length?all:null, error};
+    all.push(...(data||[]));
+    if(!data || data.length<size) break;
+  }
+  return {data:all, error:null};
+}
 async function loadCatalog(){
+  // Markets render fast — load them on their own (NOT behind the heavy ~1,248-player
+  // fetch) so the real odds (fc_allocated) show immediately instead of flashing 50/50.
+  _sb.from('markets').select('*, market_options!market_id(*)').order('created_at',{ascending:true})
+    .then(({data,error})=>{
+      if(data && data.length){ markets=data.map(mapMarket); catalog.marketsLoaded=true; renderMarkets(); renderHomeMarkets(); loadPredictions(); }
+      else if(error){ console.warn('[catalog] markets load failed, keeping seed:', error.message); }
+    });
   try{
-    const [teamsRes, playersRes, ranksRes, marketsRes] = await Promise.all([
+    const [teamsRes, playersRes, ranksRes] = await Promise.all([
       _sb.from('teams').select('*'),
-      _sb.from('players').select('*, player_stats(*)'),
-      _sb.from('player_rankings').select('player_id,total_fc,unique_supporters'),
-      // hint the FK explicitly: markets has two relationships to market_options
-      // (market_options.market_id and markets.winning_option_id), so disambiguate.
-      _sb.from('markets').select('*, market_options!market_id(*)').order('created_at',{ascending:true})
+      fetchAllPlayers(),   // paginated — PostgREST caps a single request at 1000 rows
+      _sb.from('player_rankings').select('player_id,total_fc,unique_supporters')
     ]);
 
     // Teams → lookup maps (used to resolve player country/flag). Build before players.
@@ -227,8 +416,7 @@ async function loadCatalog(){
 
     // Players
     if(playersRes.data && playersRes.data.length){
-      players = playersRes.data.map(r=>mapPlayer(r, rankByPlayer))
-        .sort((a,b)=>b.votes-a.votes);
+      players = playersRes.data.map(r=>mapPlayer(r, rankByPlayer)).sort(rankCmp);
       catalog.playersLoaded=true;
     } else if(playersRes.error){
       console.warn('[catalog] players load failed, keeping seed roster:', playersRes.error.message);
@@ -236,17 +424,16 @@ async function loadCatalog(){
       console.info('[catalog] players table empty, keeping seed roster.');
     }
 
-    // Markets
-    if(marketsRes.data && marketsRes.data.length){
-      markets = marketsRes.data.map(mapMarket);
-      catalog.marketsLoaded=true;
-    } else if(marketsRes.error){
-      console.warn('[catalog] markets load failed, keeping seed markets:', marketsRes.error.message);
-    } else {
-      console.info('[catalog] markets table empty, keeping seed markets.');
-    }
+    // (Markets are loaded + rendered independently above, so they don't wait on players.)
 
-    // Refresh everything that reads players/markets.
+    await loadFixtures(); // match schedule (live-first sort)
+
+    // Overlay live supporter counts (Supporter-Pass votes) + the user's own vote state.
+    await loadVoteCounts(); players.sort(rankCmp);
+    if(typeof captureLbBaseline==='function')captureLbBaseline(); // baseline for rank movement
+    await loadVoteState();
+
+    // Refresh everything that reads players/markets/fixtures.
     fillDropdowns(); fillCompareSelects(); renderAll();
   }catch(e){
     console.warn('[catalog] load error, keeping seed data:', e);

@@ -31,8 +31,9 @@ let custItems=[];
   Object.entries(WC26_THEMES).forEach(([n,c])=>mk(n,c,null));
 })();
 
-state.ownedCust=new Set(['France_nameplate_France']);
-state.equipped={avatar:null,decoration:null,nameplate:'France_nameplate_France',banner:null};
+// Signed-out baseline: own/equip nothing. Real ownership loads from Supabase on sign-in.
+state.ownedCust=new Set();
+state.equipped={avatar:null,decoration:null,nameplate:null,banner:null};
 state.stab='merch';state.custCat='avatars';state.custTeam='all';
 
 /* ---- visual builders (CSS-driven, no images) ---- */
@@ -96,22 +97,32 @@ function custCardHTML(item){
       <div class="merch-foot"><div class="merch-price">${fcCoin}${fmt(item.price)}</div>${btn}</div>
     </div></div>`;
 }
-function custBuy(id){
+async function custBuy(id){
   if(!requireAuth('Sign in to unlock profile items'))return;
   const item=custItems.find(x=>x.id===id);
-  if(state.ownedCust.has(id))return;
+  if(!item||state.ownedCust.has(id))return;
+  if(!item.dbId){toast('Item unavailable','error');return;}
   if(state.balance<item.price){toast('Not enough Fan Credits','error');openModal('creditsModal');return;}
-  state.balance-=item.price;state.ownedCust.add(id);syncBalance();grantXP(8,'cust');
+  // Server-authoritative: spends FC + records ownership, returns the new balance.
+  const {data,error}=await _sb.rpc('buy_cosmetic',{p_cosmetic:item.dbId});
+  if(error){toast(error.message,'error');return;}
+  state.balance=data;state.ownedCust.add(id);syncBalance();grantXP(8,'cust');
   txData.unshift({date:'Today',time:'now',desc:'Profile Item',sub:item.name,type:'redemption',amt:-item.price,bal:state.balance,ic:'auto_awesome',col:'var(--purple)',bg:'var(--purple-a)'});
   renderTx();
-  custEquip(id,true);
+  await custEquip(id,true);
   addNotif('updates','auto_awesome','var(--purple)','var(--purple-a)','Unlocked: '+item.name,'Tap to equip it on your profile.');
   toast(item.name+' unlocked!','redeem');
 }
-function custEquip(id,silent){
+async function custEquip(id,silent){
   if(!requireAuth('Sign in to equip profile items'))return;
   const item=custItems.find(x=>x.id===id);
-  if(state.equipped[item.slot]===id){state.equipped[item.slot]=null;toast(item.themeName+' '+item.slot+' removed','close');}
+  if(!item)return;
+  // Server toggles the slot (sets it, or clears if already equipped); must own it.
+  if(item.dbId){
+    const {error}=await _sb.rpc('equip_cosmetic',{p_cosmetic:item.dbId});
+    if(error){toast(error.message,'error');return;}
+  }
+  if(state.equipped[item.slot]===id){state.equipped[item.slot]=null;if(!silent)toast(item.themeName+' '+item.slot+' removed','close');}
   else{state.equipped[item.slot]=id;if(!silent)toast(item.themeName+' '+item.slot+' equipped on your profile','check');}
   renderCust();renderProfile();renderProfileHero();updateChromeAvatars();
 }

@@ -1,0 +1,13 @@
+project_id = "laypjrtpnvpubzqwnvnt"
+
+# Per-function JWT verification. Stripe (and the public price lookup) do not send a
+# Supabase JWT, so those two must run with verification OFF. The checkout call is made
+# by a signed-in user, so it keeps verification ON.
+[functions.create-checkout-session]
+verify_jwt = true
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.get-pass]
+verify_jwt = false

@@ -30,7 +30,7 @@
 <nav class="nav">
   <button class="nav-logo" onclick="go('home')" aria-label="WC26 Fan Vote home">
     <img class="app-logo" id="navLogo" alt="PCA WC26">
-    <div><div class="nav-logo-text">PCA · FAN VOTE</div><div class="nav-logo-sub">World Cup 2026 · Special Edition</div></div>
+    <div><div class="nav-logo-text">PCA WC26</div><div class="nav-logo-sub">World Cup 2026 Special Edition</div></div>
   </button>
   <div class="nav-links">
     <button class="nav-link active" data-nav="home" onclick="go('home')"><span class="material-icons-outlined">home</span>Home</button>
@@ -44,18 +44,18 @@
   </div>
   <div class="nav-actions">
     <button class="fc-pill" onclick="openModal('creditsModal')"><img class="fc-coin" id="navCoin" alt="FC"><span id="navBalance">2,450</span>&nbsp;FC</button>
-    <button class="icon-btn" onclick="go('notifications')" aria-label="Notifications"><span class="material-icons-outlined">notifications</span><span class="notif-dot"></span></button>
+    <button class="icon-btn bell-btn" onclick="go('notifications')" aria-label="Notifications"><img class="bell-ico" src="assets/bell.svg" alt="Notifications"></button>
   </div>
 </nav>
 
 <!-- ═══ BOTTOM NAV ═══ -->
 <nav class="bottom-nav">
   <div class="bottom-nav-inner">
-    <button class="bottom-nav-item active" data-nav="home" onclick="go('home')"><span class="material-icons-round">home</span><span class="bottom-nav-lbl">Home</span></button>
-    <button class="bottom-nav-item" data-nav="vote" onclick="go('vote')"><span class="material-icons-round">how_to_vote</span><span class="bottom-nav-lbl">Vote</span></button>
-    <button class="bottom-nav-item" data-nav="store" onclick="go('store')"><span class="material-icons-round">storefront</span><span class="bottom-nav-lbl">Store</span></button>
-    <button class="bottom-nav-item" data-nav="leaderboard" onclick="go('leaderboard')"><span class="material-icons-round">leaderboard</span><span class="bottom-nav-lbl">Ranks</span></button>
-    <button class="bottom-nav-item" id="moreBtn" onclick="openMenu()"><span class="material-icons-round">menu</span><span class="bottom-nav-lbl">More</span></button>
+    <button class="bottom-nav-item active" data-nav="home" onclick="go('home')" aria-label="Home"><span class="tab-ico" style="--ico:url('/assets/tabs/home.svg')"></span></button>
+    <button class="bottom-nav-item" data-nav="vote" onclick="go('vote')" aria-label="Vote"><span class="tab-ico" style="--ico:url('/assets/tabs/vote.svg')"></span></button>
+    <button class="bottom-nav-item" data-nav="store" onclick="go('store')" aria-label="Store"><span class="tab-ico" style="--ico:url('/assets/tabs/store.svg')"></span></button>
+    <button class="bottom-nav-item" data-nav="leaderboard" onclick="go('leaderboard')" aria-label="Ranks"><span class="tab-ico" style="--ico:url('/assets/tabs/ranks.svg')"></span></button>
+    <button class="bottom-nav-item" id="moreBtn" onclick="openMenu()" aria-label="More"><span class="tab-ico" style="--ico:url('/assets/tabs/more.svg')"></span></button>
   </div>
 </nav>
 
@@ -72,12 +72,11 @@
 
 <!-- MOBILE/TABLET HEADER -->
 <header class="m-header">
-  <button class="m-burger" onclick="openMenu()" aria-label="Menu"><span class="material-icons-round">menu</span></button>
   <img class="app-logo" id="mLogo" alt="PCA">
-  <div class="m-title">PCA · FAN VOTE<small>World Cup 2026</small></div>
+  <div class="m-title">PCA WC26<small>World Cup 2026 Special Edition</small></div>
   <div class="m-actions">
     <button class="m-fc" onclick="openModal('creditsModal')"><img class="fc-coin" id="mCoin" alt="FC"><span id="mBalance">2,450</span></button>
-    <button class="icon-btn" onclick="go('notifications')" aria-label="Notifications"><span class="material-icons-outlined">notifications</span><span class="notif-dot"></span></button>
+    <button class="icon-btn bell-btn" onclick="go('notifications')" aria-label="Notifications"><img class="bell-ico" src="assets/bell.svg" alt="Notifications"></button>
   </div>
 </header>
 <div class="menu-backdrop" id="menuBackdrop" onclick="closeMenu()"></div>
@@ -86,7 +85,7 @@
 <aside class="sidebar">
   <button class="sb-logo" onclick="go('home')">
     <img class="app-logo" id="sbLogo" alt="PCA">
-    <div><div class="nav-logo-text">PCA · FAN VOTE</div><div class="nav-logo-sub">World Cup 2026 · Special</div></div>
+    <div><div class="nav-logo-text">PCA WC26</div><div class="nav-logo-sub">World Cup 2026 Special Edition</div></div>
   </button>
   <button class="sb-link active" data-nav="home" onclick="go('home')"><span class="material-icons-outlined">home</span>Home</button>
   <button class="sb-link" data-nav="vote" onclick="go('vote')"><span class="material-icons-outlined">how_to_vote</span>Vote Players</button>
@@ -98,7 +97,7 @@
   <button class="sb-link" data-nav="store" onclick="go('store')"><span class="material-icons-outlined">storefront</span>Store</button>
   <div class="sb-divider"></div>
   <button class="sb-link" data-nav="notifications" onclick="go('notifications')"><span class="material-icons-outlined">notifications</span>Notifications<span class="sb-badge">3</span></button>
-  <button class="sb-link" data-nav="analytics" onclick="go('analytics')"><span class="material-icons-outlined">monitoring</span>Analytics</button>
+  <button class="sb-link" data-nav="analytics" onclick="go('analytics')"><span class="material-icons-outlined">show_chart</span>Analytics</button>
   <button class="sb-link" data-nav="transactions" onclick="go('transactions')"><span class="material-icons-outlined">receipt_long</span>Transactions</button>
   <button class="sb-link" data-nav="profile" onclick="go('profile')"><span class="material-icons-outlined">person</span>Profile</button>
   <button class="sb-link" data-nav="settings" onclick="go('settings')"><span class="material-icons-outlined">settings</span>Settings</button>
@@ -118,11 +117,11 @@
     <div class="search-wrap"><span class="material-icons-outlined">search</span>
       <input class="search-input" type="search" placeholder="Search players, teams…" onkeydown="if(event.key==='Enter'){go('vote');document.getElementById('playerSearch').value=this.value;renderVoteList();}"></div>
     <div class="app-header-actions">
-      <button class="hdr-balance" onclick="openModal('creditsModal')">
-        <div class="hdr-balance-txt"><div class="hdr-balance-lbl">My Balance</div><div class="hdr-balance-val"><span id="hdrBalance">2,450</span> FC</div></div>
+      <button class="hdr-balance" onclick="openModal('creditsModal')" aria-label="My balance">
         <img class="fc-coin" id="hdrCoin" alt="FC">
+        <div class="hdr-balance-val"><span id="hdrBalance">2,450</span></div>
       </button>
-      <button class="icon-btn" onclick="go('notifications')" aria-label="Notifications"><span class="material-icons-outlined">notifications</span><span class="notif-dot"></span></button>
+      <button class="icon-btn bell-btn" onclick="go('notifications')" aria-label="Notifications"><img class="bell-ico" src="assets/bell.svg" alt="Notifications"></button>
     </div>
   </header>
 
@@ -139,10 +138,9 @@
       <h1 class="h2" style="text-transform:uppercase;">Live Voting <span class="live-badge">Live</span></h1>
       <div class="head-actions">
         <button class="fc-pill" style="padding:7px 12px;" onclick="openModal('creditsModal')"><img class="fc-coin" id="homeCoin" alt="FC"><span id="homeBalance">2,450</span></button>
-        <button class="icon-btn" onclick="go('notifications')" aria-label="Notifications"><span class="material-icons-outlined">notifications</span><span class="notif-dot"></span></button>
       </div>
     </div>
-    <div class="caption" style="color:var(--ink-3);">Voting closes in</div>
+    <div class="caption" style="color:var(--ink-3);">Voting closes in <strong id="votingClosesDate" style="color:var(--ink-2);"></strong></div>
 
     <div class="countdown" aria-label="Voting closes in">
       <div class="cd-u"><div class="cd-num" id="cdDays">12</div><div class="cd-lbl">Days</div></div>
@@ -183,10 +181,15 @@
     </div>
     <div class="grid-2" id="homeMarkets"></div>
 
-    <div class="sec-row"><span class="lbl">Tournament Pulse</span><span class="caption" style="color:var(--ink-4);font-weight:600;">Last 7 Days</span></div>
+    <div class="sec-row"><span class="lbl">Tournament Pulse</span>
+      <select id="pulseRange" class="mini-select" onchange="setPulseRange(this.value)" aria-label="Pulse range">
+        <option value="7d">Last 7 Days</option>
+        <option value="month">Last Month</option>
+        <option value="ytd">Year to Date</option>
+      </select></div>
     <div class="card" style="padding:18px;"><div id="homePulse"></div></div>
 
-    <div class="sec-row"><span class="lbl">Support by Confederation</span></div>
+    <div class="sec-row"><span class="lbl">Support by Country</span></div>
     <div class="card" style="padding:18px;"><div id="homeRegions"></div></div>
 
     <div class="sec-row"><span class="lbl">Today's Games</span><button class="sec-link" onclick="go('games')">All fixtures <span class="material-icons-round">arrow_forward</span></button></div>
@@ -199,7 +202,6 @@
   <div class="container screen-pad">
     <div class="screen-head">
       <div><h1 class="h1">Vote</h1><div class="screen-sub">Choose your favorite player</div></div>
-      <div class="head-actions"><button class="icon-btn" onclick="go('notifications')"><span class="material-icons-outlined">notifications</span></button></div>
     </div>
 
     <div class="search-wrap">
@@ -237,7 +239,6 @@
   <div class="container screen-pad">
     <div class="screen-head">
       <div><h1 class="h1">Live Leaderboard</h1><div class="screen-sub">Updates every 60 seconds</div></div>
-      <div class="head-actions"><button class="icon-btn" onclick="go('notifications')"><span class="material-icons-outlined">notifications</span></button></div>
     </div>
 
     <div class="tab-row">
@@ -481,24 +482,24 @@
       <aside class="tx-aside">
         <div class="card set-card">
           <div class="set-card-title" style="display:flex;justify-content:space-between;align-items:center;">Transaction Summary
-            <span class="dd" style="margin:0;"><select class="mini-select"><option>Last 30 Days</option><option>Last 7 Days</option><option>All time</option></select></span></div>
+            <span class="dd" style="margin:0;"><select id="txRange" class="mini-select" onchange="setTxRange(this.value)"><option value="30">Last 30 Days</option><option value="7">Last 7 Days</option><option value="all">All time</option></select></span></div>
           <div class="tx-sum-row">
-            <div><div class="lbl-xs">Total Spent</div><div class="tx-sum-v">1,350 FC</div><div class="caption" style="color:var(--ink-4);">$14.98</div></div>
-            <div><div class="lbl-xs">Total Earned</div><div class="tx-sum-v">1,500 FC</div><div class="caption" style="color:var(--ink-4);">$14.98</div></div>
+            <div><div class="lbl-xs">Total Spent</div><div class="tx-sum-v" id="txSpent">0 FC</div></div>
+            <div><div class="lbl-xs">Total Earned</div><div class="tx-sum-v" id="txEarned">0 FC</div></div>
           </div>
-          <div style="margin-top:12px;"><div class="lbl-xs">Net Spent</div><div class="tx-sum-v" style="color:var(--live);">-150 FC</div><div class="caption" style="color:var(--ink-4);">$0.00</div></div>
+          <div style="margin-top:12px;"><div class="lbl-xs">Net</div><div class="tx-sum-v" id="txNet" style="color:var(--live);">0 FC</div></div>
           <div id="txChart" style="margin-top:10px;"></div>
         </div>
         <div class="card set-card">
           <div class="set-card-title">Filter Transactions</div>
           <div class="filter-grid">
-            <div class="field"><label class="set-label">Date Range</label><select class="select-input"><option>Last 30 Days</option><option>Last 7 Days</option><option>This year</option></select></div>
-            <div class="field"><label class="set-label">Transaction Type</label><select class="select-input"><option>All Types</option><option>Purchase</option><option>Vote</option><option>Redemption</option></select></div>
-            <div class="field"><label class="set-label">Payment Method</label><select class="select-input"><option>All Methods</option><option>Apple Pay</option><option>Google Pay</option><option>Card</option></select></div>
-            <div class="field"><label class="set-label">Status</label><select class="select-input"><option>All Statuses</option><option>Completed</option><option>Pending</option></select></div>
+            <div class="field"><label class="set-label">Date Range</label><select id="fltDate" class="select-input"><option value="30">Last 30 Days</option><option value="7">Last 7 Days</option><option value="ytd">This year</option><option value="all">All time</option></select></div>
+            <div class="field"><label class="set-label">Transaction Type</label><select id="fltType" class="select-input"><option value="all">All Types</option><option value="purchase">Purchase</option><option value="vote">Vote &amp; Activity</option><option value="redemption">Rewards</option><option value="refund">Refunds</option></select></div>
+            <div class="field"><label class="set-label">Payment Method</label><select id="fltMethod" class="select-input"><option value="all">All Methods</option><option value="purchase">Card / Wallet (purchases)</option><option value="fc">Fan Credits</option></select></div>
+            <div class="field"><label class="set-label">Status</label><select id="fltStatus" class="select-input"><option value="all">All Statuses</option><option value="completed">Completed</option><option value="pending">Pending</option></select></div>
           </div>
-          <button class="btn btn-block" style="margin-top:14px;background:var(--purple-soft);color:var(--purple);" onclick="toast('Filters applied','filter_alt')">Apply Filters</button>
-          <button class="btn btn-block" style="margin-top:8px;background:none;color:var(--purple);" onclick="toast('Filters reset','restart_alt')">Reset Filters</button>
+          <button class="btn btn-block" style="margin-top:14px;background:var(--purple-soft);color:var(--purple);" onclick="applyTxFilters()">Apply Filters</button>
+          <button class="btn btn-block" style="margin-top:8px;background:none;color:var(--purple);" onclick="resetTxFilters()">Reset Filters</button>
         </div>
         <div class="card set-card">
           <div class="set-card-title">Need Help?</div>
@@ -528,6 +529,8 @@
       </select></div>
       <label class="check-row"><input type="checkbox" id="suTerms" onchange="validateSignup()"><span>I agree to the <a href="#" onclick="event.preventDefault();openModal('termsModal')">Terms of Use</a> and <a href="#" onclick="event.preventDefault();openModal('privacyModal')">Privacy Policy</a></span></label>
       <button class="btn btn-primary btn-block" id="suBtn" onclick="createAccount()" disabled>Create Account</button>
+      <div class="or-divider">or</div>
+      <button class="btn btn-google btn-block" onclick="signInWithGoogle()"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Continue with Google</button>
       <div class="caption" style="text-align:center;color:var(--ink-3);">Already have an account? <a href="#" style="color:var(--ink);font-weight:700;" onclick="event.preventDefault();go('login')">Log in</a></div>
     </div>
   </div>
@@ -555,6 +558,8 @@
         <button class="input-eye" onclick="togglePass('liPass','eyeIconLogin')" aria-label="Show password"><span class="material-icons-outlined" id="eyeIconLogin">visibility_off</span></button>
       </div>
       <button class="btn btn-primary btn-block" id="liBtn" onclick="logIn()" disabled>Log in</button>
+      <div class="or-divider">or</div>
+      <button class="btn btn-google btn-block" onclick="signInWithGoogle()"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Continue with Google</button>
       <div class="caption" style="text-align:center;color:var(--ink-3);">Don't have an account? <a href="#" style="color:var(--ink);font-weight:700;" onclick="event.preventDefault();go('signup')">Create one</a></div>
     </div>
   </div>
@@ -661,33 +666,78 @@
 </footer>
 
 <!-- ═══ VOTE MODAL ═══ -->
-<div class="modal-backdrop" id="voteModal" onclick="backdropClose(event,'voteModal')">
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Support player">
-    <button class="modal-close" onclick="closeModal('voteModal')"><span class="material-icons-round">close</span></button>
-    <div class="modal-pad">
-      <div id="voteModalPlayer" style="display:flex;align-items:center;gap:13px;"></div>
-      <div style="text-align:center;padding:18px 0 4px;">
-        <div class="alloc-num" id="allocNum">250</div>
-        <div class="lbl-xs">Fan Credits</div>
-      </div>
-      <input type="range" id="allocSlider" min="50" max="2450" step="50" value="250" oninput="updateAlloc(this.value)" aria-label="Credits to allocate">
-      <div style="display:flex;justify-content:space-between;" class="caption">
-        <span style="color:var(--ink-4);font-weight:600;">50 FC</span>
-        <span style="color:var(--ink-4);font-weight:600;">Balance: <span id="allocMax">2,450</span> FC</span>
-      </div>
-      <div class="quick-amts">
-        <button class="quick-amt" onclick="setAlloc(100)">100</button>
-        <button class="quick-amt" onclick="setAlloc(250)">250</button>
-        <button class="quick-amt" onclick="setAlloc(500)">500</button>
-        <button class="quick-amt" onclick="setAlloc(1000)">1,000</button>
-      </div>
-      <button class="btn btn-primary btn-block" style="margin-top:14px;" onclick="confirmVote()">Vote Now</button>
-      <p class="caption" style="color:var(--ink-4);text-align:center;margin-top:11px;line-height:1.6;">You can change your allocation at any time.<br>Fan Credits have no cash value.</p>
+<div class="modal-backdrop vp-backdrop" id="voteModal" onclick="backdropClose(event,'voteModal')">
+  <div class="vp-top">
+    <button class="vp-back" onclick="closeModal('voteModal')" aria-label="Back"><span class="material-icons-round">chevron_left</span></button>
+    <div>
+      <div class="vp-top-title">Voting Access</div>
+      <div class="vp-top-sub">Push your favorite player to the top!</div>
+    </div>
+  </div>
+  <div class="vp-card" role="dialog" aria-modal="true" aria-label="Supporter Pass">
+    <div class="vp-left">
+      <h2 class="vp-title"><span>Supporter Pass</span><span class="vp-bolt material-icons-round">bolt</span></h2>
+      <p class="vp-sub">Make your vote count more.</p>
+      <ul class="vp-feats">
+        <li><span class="material-icons-round">check</span>Participate in voting</li>
+        <li><span class="material-icons-round">check</span>Exclusive WC26 digital badge</li>
+        <li><span class="material-icons-round">check</span>Early access to new features</li>
+        <li><span class="material-icons-round">check</span>Premium supporter profile</li>
+      </ul>
+      <span class="vp-pop">Most Popular</span>
+      <button class="vp-plan selected" id="vpPlan" aria-pressed="true">
+        <div>
+          <div class="vp-plan-name" id="vpPlanName">Cup Pass</div>
+          <div class="vp-plan-price"><span id="vpPlanPrice">$1.99</span> <span class="vp-plan-per" id="vpPlanPer">/one-time</span></div>
+          <div class="vp-plan-desc" id="vpPlanDesc">Grant access to voting for the World Cup 2026!</div>
+        </div>
+        <span class="vp-plan-check material-icons-round">check_circle</span>
+      </button>
+    </div>
+    <div class="vp-right">
+      <button class="vp-pay apple" onclick="startCheckout('apple')">
+        <svg viewBox="0 0 384 512" width="19" height="19" fill="currentColor" aria-hidden="true"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg>Pay
+      </button>
+      <button class="vp-pay gpay" onclick="startCheckout('google')">
+        <svg viewBox="0 0 48 48" width="19" height="19" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Pay
+      </button>
+      <button class="vp-pay card" onclick="startCheckout('card')"><span class="material-icons-round">credit_card</span>Card Payment</button>
+      <div class="vp-secure"><span class="material-icons-round">lock</span>Secure payment. Cancel anytime.</div>
+      <div class="vp-fine" id="vpFine">3 days free, then $19.99 USD per month.<br>Auto-renews monthly until canceled.</div>
+      <div class="vp-legal"><a onclick="openModal('termsModal')">Terms of Service</a> &nbsp;•&nbsp; <a onclick="openModal('privacyModal')">Privacy Policy</a></div>
     </div>
   </div>
 </div>
 
 <!-- ═══ 07 VOTE CONFIRMATION ═══ -->
+<!-- ═══ VOTE-CHANGE CONFIRM (the one allowed change) ═══ -->
+<div class="modal-backdrop" id="voteConfirmModal" onclick="backdropClose(event,'voteConfirmModal')">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Confirm vote change">
+    <button class="modal-close" onclick="closeModal('voteConfirmModal')"><span class="material-icons-round">close</span></button>
+    <div class="modal-pad" style="text-align:center;">
+      <div class="success-ring" style="background:var(--gold);"><span class="material-icons-round">how_to_vote</span></div>
+      <h2 class="h2" style="text-transform:uppercase;margin-top:10px;" id="vcTitle">Change your vote?</h2>
+      <p class="small" style="color:var(--ink-2);margin-top:8px;line-height:1.6;" id="vcBody">This is your only vote change.</p>
+      <button class="btn btn-primary btn-block" style="margin-top:18px;" id="vcConfirm" onclick="confirmVoteChange()">Yes, change my vote</button>
+      <button class="btn btn-secondary btn-block" style="margin:10px 0 4px;" onclick="closeModal('voteConfirmModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ COUNTRY PICKER (needed for the support map when a voter has no country) ═══ -->
+<div class="modal-backdrop" id="countryModal" onclick="backdropClose(event,'countryModal')">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Select your country">
+    <button class="modal-close" onclick="closeModal('countryModal')"><span class="material-icons-round">close</span></button>
+    <div class="modal-pad">
+      <span class="lbl" style="color:var(--purple);">Your Country</span>
+      <h2 class="h2" style="text-transform:uppercase;margin-top:4px;">Where are you voting from?</h2>
+      <p class="caption" style="color:var(--ink-3);margin-top:6px;line-height:1.6;">Your support shows on the global map. Pick your country to continue.</p>
+      <div class="dd" style="margin-top:16px;"><select id="cmCountry"></select></div>
+      <button class="btn btn-primary btn-block" style="margin-top:16px;" id="cmConfirm">Save &amp; Continue</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="successModal" onclick="backdropClose(event,'successModal')">
   <div class="modal" role="dialog" aria-modal="true">
     <div class="modal-pad" style="text-align:center;padding-top:36px;padding-bottom:0;">
@@ -837,7 +887,7 @@
     <button class="sheet-item" onclick="closeSheet();go('markets')"><span class="material-icons-outlined">insights</span>Predictions<span class="material-icons-round chev">chevron_right</span></button>
     <button class="sheet-item" onclick="closeSheet();go('compare')"><span class="material-icons-outlined">compare_arrows</span>Compare Players<span class="material-icons-round chev">chevron_right</span></button>
     <button class="sheet-item" onclick="closeSheet();go('notifications')"><span class="material-icons-outlined">notifications</span>Notifications<span class="material-icons-round chev">chevron_right</span></button>
-    <button class="sheet-item" onclick="closeSheet();go('analytics')"><span class="material-icons-outlined">monitoring</span>Analytics<span class="material-icons-round chev">chevron_right</span></button>
+    <button class="sheet-item" onclick="closeSheet();go('analytics')"><span class="material-icons-outlined">show_chart</span>Analytics<span class="material-icons-round chev">chevron_right</span></button>
     <button class="sheet-item" onclick="closeSheet();openModal('creditsModal')"><span class="material-icons-outlined">toll</span>Get Fan Credits<span class="material-icons-round chev">chevron_right</span></button>
     <button class="sheet-item" onclick="closeSheet();openModal('premiumModal')"><span class="material-icons-outlined">bolt</span>Premium Vote Boost<span class="material-icons-round chev">chevron_right</span></button>
     <button class="sheet-item" onclick="closeSheet();go('transactions')"><span class="material-icons-outlined">receipt_long</span>Transactions<span class="material-icons-round chev">chevron_right</span></button>

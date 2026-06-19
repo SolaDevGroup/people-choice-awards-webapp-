@@ -70,9 +70,13 @@ function renderFcPacks(){
     <div style="font-size:15px;font-weight:900;">${p.price}</div>
   </div>`).join('');
 }
+// FC pack keys aligned with fcPacks order (data.js) and the Edge Function CATALOG.
+const PACK_KEYS=['starter','fan','ultra','legend','champion'];
 function buyPack(i){
-  state.balance+=fcPacks[i].fc;syncBalance();closeModal('creditsModal');
-  toast(`${fmt(fcPacks[i].fc)} FC added to your balance`,'toll');
+  if(!requireAuth('Sign in to buy Fan Credits'))return;
+  const key=PACK_KEYS[i]; if(!key)return;
+  // Real Stripe Checkout → the webhook credits the FC to the profile on success.
+  stripeCheckout(key);
 }
 function syncBalance(){
   navBalance.textContent=fmt(state.balance);

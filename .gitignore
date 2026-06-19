@@ -6,3 +6,10 @@
 
 # Local-only Claude settings (keep launch.json, ignore machine-specific settings)
 .claude/settings.local.json
+
+# Import-script secrets (API-Football + Supabase service-role key) — never commit
+scripts/.env
+
+# Stripe / Edge Function secrets — never commit
+supabase/functions/.env
+supabase/.env
