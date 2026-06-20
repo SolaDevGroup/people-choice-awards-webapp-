@@ -376,6 +376,14 @@ async function renderHomePulse(){
   el.innerHTML=trendSVG(points,labels,560,170);
 }
 function setPulseRange(r){ _pulseRange=r; renderHomePulse(); }
+/* Player-detail Vote Trend — same range filter as the home pulse, fed by this player's votes */
+let _playerTrendRange='7d', _playerVoteDates=[];
+function renderPlayerTrend(){
+  const tc=document.getElementById('voteTrendChart'); if(!tc) return;
+  const {points,labels}=votePulseData(_playerTrendRange,_playerVoteDates);
+  tc.innerHTML=trendSVG(points,labels,600,180);
+}
+function setPlayerTrendRange(r){ _playerTrendRange=r; renderPlayerTrend(); }
 /* ---- Support by Country: real % of votes coming from each signup country ---- */
 const _supportColors=['#4000FF','#FF2065','#00E6C4','#FFB600','#3D6BFF','#0BA84A','#6640FF','#FF8600','#EE1045','#13D6C4','#2F6BFF'];
 async function renderSupportByCountry(){
@@ -509,9 +517,9 @@ async function loadPlayerCharts(p){
   const {data,error}=await _sb.from('pass_vote').select('created_at,country_code,profiles(country_code)').eq('player_id',p.dbId);
   if(error){console.warn('[charts] votes load failed:',error.message);return;}
   const votes=(data||[]).map(v=>({created_at:v.created_at,fc_allocated:1,profiles:{country_code:(v.profiles&&v.profiles.country_code)||v.country_code}}));
-  // trend
-  const {points,labels}=buildTrend(votes);
-  const tc=document.getElementById('voteTrendChart');if(tc)tc.innerHTML=trendSVG(points,labels,600,180);
+  // trend — range-aware (7d / month / ytd), same engine as the home Tournament Pulse
+  _playerVoteDates=votes.map(v=>v.created_at);
+  renderPlayerTrend();
   // global support — highlight the signup countries, scaled by how many voters came from each
   const byCountry={};
   votes.forEach(v=>{const cc=v.profiles&&v.profiles.country_code;if(!cc)return;const name=SIGNUP_CODE[String(cc).toUpperCase()]||cc;byCountry[name]=(byCountry[name]||0)+1;});
@@ -529,16 +537,21 @@ async function loadPlayerCharts(p){
 function openPlayer(id,from){
   const p=players.find(x=>x.id===id);
   const idx=players.indexOf(p);state.backTo=from||'vote';
+  _playerTrendRange='7d'; // each player opens on the default range (select shows it too)
   const g=p.trend>=0;
   const pPreds=playerPreds(p); // keep a ref so we can fill real odds after render
   playerDetail.innerHTML=`
   <div class="detail-hero">
     <div class="pcard-shine"></div>
-    <div class="detail-hero-mark">${p.num}</div>
+    ${(p&&p.photo)?`<img class="detail-hero-img" src="${p.photo}" alt="" loading="lazy" onerror="this.remove()">`:`<div class="detail-hero-mark">${p.num}</div>`}
     <div class="hero-top">
       <button class="hero-icon" onclick="go(state.backTo)" aria-label="Back"><span class="material-icons-round">arrow_back</span></button>
-      <button class="hero-icon" onclick="toggleFav('${p.id}',this);this.querySelector('span').textContent=state.favs.has('${p.id}')?'favorite':'favorite_border'" aria-label="Favourite">
-        <span class="material-icons-round">${state.favs.has(p.id)?'favorite':'favorite_border'}</span></button>
+      <div class="hero-htitle"><div class="hero-htitle-t">Player Detail</div><div class="hero-htitle-s">See all player's stats</div></div>
+      <div class="hero-actions">
+        <button class="hero-icon" onclick="copyLink('${(p.name||'').replace(/'/g,'')}')" aria-label="Share"><span class="material-icons-round">ios_share</span></button>
+        <button class="hero-icon" onclick="toggleFav('${p.id}',this);this.querySelector('span').textContent=state.favs.has('${p.id}')?'favorite':'favorite_border'" aria-label="Favourite">
+          <span class="material-icons-round">${state.favs.has(p.id)?'favorite':'favorite_border'}</span></button>
+      </div>
     </div>
     <div class="detail-first">${p.first}</div>
     <div class="detail-last">${p.last}</div>
@@ -551,22 +564,26 @@ function openPlayer(id,from){
   <div class="overlap-card">
     <div class="ov-top">
       <div><span class="lbl-xs">Total Votes</span><div class="ov-big" id="totalVotesVal">${fmtV(p.votes)}</div></div>
-      <div><span class="lbl-xs">Vote Growth</span><div class="ov-big ${g?'up':'down'}" id="voteGrowthVal" style="color:${g?'var(--green)':'var(--pink)'};">${g?'+':''}${p.trend.toFixed(1)}%</div><div class="caption" style="color:var(--ink-4);">Last 24h</div></div>
+      <div><span class="lbl-xs">Vote Trend</span><div class="ov-big ${g?'up':'down'}" id="voteGrowthVal" style="color:${g?'var(--green)':'var(--pink)'};">${g?'+':''}${p.trend.toFixed(1)}%</div><div class="caption" style="color:var(--ink-4);">Last 24h</div></div>
     </div>
     <div class="ov-stats">
       <div><div class="ov-stat-v">${p.goals}</div><div class="ov-stat-l">Goals</div></div>
       <div><div class="ov-stat-v">${p.assists}</div><div class="ov-stat-l">Assists</div></div>
       <div><div class="ov-stat-v">${p.matches}</div><div class="ov-stat-l">Matches</div></div>
-      <div><div class="ov-stat-v">${(+p.gpm||0).toFixed(2)}</div><div class="ov-stat-l">Goals/Match</div></div>
+      <div><div class="ov-stat-v">${p.wc||0}</div><div class="ov-stat-l">WC Apps</div></div>
     </div>
   </div>
   <div class="chart-head"><span class="lbl">Vote Trend</span>
-    <span class="caption" style="color:var(--ink-3);font-weight:600;display:flex;align-items:center;gap:2px;">Last 7 Days<span class="material-icons-round" style="font-size:15px;">expand_more</span></span></div>
+    <select id="playerTrendRange" class="mini-select" onchange="setPlayerTrendRange(this.value)" aria-label="Trend range">
+      <option value="7d">Last 7 Days</option>
+      <option value="month">Last Month</option>
+      <option value="ytd">Year to Date</option>
+    </select></div>
   <div id="voteTrendChart">${trendSVG([0,0,0,0,0,0,0],last7Days().filter((_,i)=>i%2===0).map(x=>x.label),600,180)}</div>
   <div class="chart-head"><span class="lbl">Global Support</span></div>
   <div class="map-wrap" id="globalSupportMap">${mapLoadingHTML()}</div>
-  <div class="chart-head"><span class="lbl">Predictions · ${p.name.split(' ').slice(-1)[0]}</span><span class="caption" style="color:var(--ink-4);font-weight:600;">Yes / No</span></div>
-  <div class="yn-list" id="playerPredList">${yesNoListHTML(pPreds)}</div>
+  <div class="chart-head"><span class="lbl">Predictions for ${p.name.split(' ').slice(-1)[0]}</span><span class="caption" style="color:var(--ink-4);font-weight:600;">Yes / No</span></div>
+  <div class="pq-list" id="playerPredList">${playerQListHTML(pPreds)}</div>
   <div class="detail-cta">
     ${voteBtnHTML(p,'btn-block')}
     <button class="sq-btn" onclick="copyLink('${(p.name||'').replace(/'/g,'')}')" aria-label="Share"><span class="material-icons-outlined">ios_share</span></button>
@@ -574,7 +591,7 @@ function openPlayer(id,from){
   go('player');
   loadPlayerCharts(p); // fill trend chart + support map + live totals from real votes
   // Fill real odds for any player questions that already have a market (default 50/50).
-  const renderPP=()=>{const el=document.getElementById('playerPredList');if(el)el.innerHTML=yesNoListHTML(pPreds);};
+  const renderPP=()=>{const el=document.getElementById('playerPredList');if(el)el.innerHTML=playerQListHTML(pPreds);};
   _activeQuestionRender=renderPP; loadQuestionPcts(pPreds,renderPP);
 }
 
@@ -729,12 +746,12 @@ function renderPredHistory(){
       <div class="hist-icon" style="background:${w?'rgba(11,168,74,.1)':'var(--purple-a)'};">
         <span class="material-icons-round" style="color:${w?'var(--green)':'var(--purple)'};">${w?'emoji_events':'insights'}</span></div>
       <div style="flex:1;min-width:0;"><div class="hist-title">${p.market}</div>
-        <div class="hist-sub">Forecast: ${p.pick} · ${fmt(p.fc)} FC${moved?` · <span style="color:${movePct>0?'var(--green)':'var(--live)'};font-weight:700;">${movePct>0?'▲':'▼'} ${Math.abs(movePct)}%</span>`:''}</div></div>
+        <div class="hist-sub">${p.pick} · <strong>${fmt(p.fc)} FC</strong> engaged${moved?` · <span style="color:${movePct>0?'var(--green)':'var(--live)'};font-weight:700;">${movePct>0?'▲':'▼'} ${Math.abs(movePct)}%</span>`:''}</div></div>
       <div class="hist-amt" style="color:${w?'var(--green)':open?'var(--green)':'var(--ink-4)'};text-align:right;">
         ${w?'+'+fmt(p.reward)+' FC':open?'<span style="font-size:10px;color:var(--ink-4);font-weight:600;display:block;">Potential</span>'+fmt(potential)+' FC':'Settled'}</div>
     </div>
     ${open?`<div class="pred-breakdown" id="pb-${idx}">
-      <div class="pb-row"><span>Stake</span><strong>${fmt(p.fc)} FC</strong></div>
+      <div class="pb-row"><span>Engaged</span><strong>${fmt(p.fc)} FC</strong></div>
       <div class="pb-row"><span>Your pick</span><strong>${p.pick}</strong></div>
       <div class="pb-row"><span>Current odds</span><strong>${p.curPct||50}%${moved?` (${movePct>0?'+':''}${movePct}%)`:''}</strong></div>
       <div class="pb-row total"><span>Potential win</span><strong style="color:var(--green);">${fmt(potential)} FC</strong></div>
@@ -783,19 +800,35 @@ function openPredModal(id,q,aPct,aLabel,bLabel,market,lazy){
   predAmt(sl.value);document.getElementById('predMax').textContent=fmt(state.balance);
   updatePredPayout();
   openModal('predModal');
+  // refresh the shown balance from the DB (cached value can be stale)
+  syncBalanceFromDB().then(b=>{const pm=document.getElementById('predMax');if(pm)pm.textContent=fmt(b);sl.max=Math.max(1000,b);});
 }
 function selectSide(s){curPred.side=s;
   document.getElementById('sideYes').classList.toggle('sel',s==='a');
   document.getElementById('sideNo').classList.toggle('sel',s==='b');updatePredPayout();}
 function predAmt(v){document.getElementById('predAmtNum').textContent=fmt(+v);updatePredPayout();}
 function predQuick(v){const sl=document.getElementById('predSlider');sl.value=Math.min(v,+sl.max);predAmt(sl.value);}
+// The cached state.balance can drift from the DB (other spends, multiple tabs, etc.).
+// Re-read the authoritative fc_balance so we never let a stake exceed the real balance
+// (which would otherwise hit the profiles_fc_balance_check constraint server-side).
+async function syncBalanceFromDB(){
+  try{
+    if(state.user&&typeof _sb!=='undefined'){
+      const {data}=await _sb.from('profiles').select('fc_balance').eq('id',state.user.id).single();
+      if(data&&data.fc_balance!=null){state.balance=Number(data.fc_balance);syncBalance();}
+    }
+  }catch(e){}
+  return state.balance;
+}
+function notEnoughFC(){
+  toast("You don't have enough Fan Credits — buy more to forecast",'lock');
+  closeModal('predModal');openModal('creditsModal');
+}
 async function confirmPred(){
   if(!requireAuth('Sign in to forecast'))return;
   const amt=+document.getElementById('predSlider').value;
-  if(amt>state.balance){
-    toast("You don't have enough Fan Credits — buy more to forecast",'lock');
-    closeModal('predModal');openModal('creditsModal');return;
-  }
+  await syncBalanceFromDB();               // use the REAL balance, not the cached one
+  if(amt>state.balance){ notEnoughFC(); return; }
   const sideLabel=curPred.side==='a'?curPred.aLabel:curPred.bLabel;
   const m=curPred.market;
   if(m&&m.dbId&&m.options&&m.options.length>=2){
@@ -803,7 +836,10 @@ async function confirmPred(){
     // the odds (fc_allocated) and grants XP — so it persists across refresh.
     const opt=curPred.side==='a'?m.options[0]:m.options[1];
     const {data,error}=await _sb.rpc('place_prediction',{p_market:m.dbId,p_option:opt.id,p_stake:amt});
-    if(error){toast(error.message||'Forecast failed','error');return;}
+    if(error){
+      if(/fc_balance|Insufficient Fan Credits/i.test(error.message||'')){ await syncBalanceFromDB(); notEnoughFC(); return; }
+      toast(error.message||'Forecast failed','error');return;
+    }
     if(data&&data.balance!=null)state.balance=Number(data.balance);
     // Re-read this market's stakes so the % + bar update live.
     try{
@@ -825,7 +861,10 @@ async function confirmPred(){
     const {data,error}=await _sb.rpc('forecast_question',{
       p_slug:lz.slug,p_title:lz.q||curPred.q,p_category:lz.category||'country',
       p_label_a:lz.labelA||'Yes',p_label_b:lz.labelB||'No',p_side:curPred.side,p_stake:amt});
-    if(error){toast(error.message||'Forecast failed','error');return;}
+    if(error){
+      if(/fc_balance|Insufficient Fan Credits/i.test(error.message||'')){ await syncBalanceFromDB(); notEnoughFC(); return; }
+      toast(error.message||'Forecast failed','error');return;
+    }
     if(data&&data.balance!=null)state.balance=Number(data.balance);
     const av=Number((data&&data.alloc_a)||0)+100,bv=Number((data&&data.alloc_b)||0)+100;
     lz.yes=Math.round(av/(av+bv)*100);                 // update the question's live odds
@@ -854,6 +893,25 @@ function yesNoListHTML(arr){
     <span class="material-icons-round yn-chev">chevron_right</span>
   </button>`;}).join('');
 }
+// Player questions rendered with the same stacked-bar market card as the Predictions page.
+function playerQCardHTML(q){
+  _questionMap[q.id]=q;
+  const yes=q.yes||50, no=100-yes;
+  const pick=(state.predictions||[]).find(x=>x.market===q.q); const pn=pick&&pick.pick; // active = user's pick
+  const closes=(typeof VOTING_CLOSES!=='undefined')?VOTING_CLOSES.toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'}):'Jul 19';
+  const bar=(label,pct,active)=>`<button class="mk-opt ${active?'active':'inactive'}" onclick="openQuestionPred('${q.id}')">
+      <span class="mk-fill"><img class="mk-yn-img" src="assets/${label.toLowerCase()}_${active?'active':'inactive'}.svg" alt="${label}"></span>
+      <span class="mk-pct">${pct}%</span>
+    </button>`;
+  return `<div class="card market-card">
+    <div class="market-top"><span class="market-type">Yes / No</span>
+      <span class="market-closes"><span class="material-icons-outlined">schedule</span>Closes ${closes}</span></div>
+    <div class="market-title">${q.q}</div>
+    ${q.pool?`<div class="market-pool">Pool: <strong>${fmt(q.pool)} FC</strong></div>`:''}
+    <div class="mk-opts">${bar('Yes',yes,pn==='Yes')}${bar('No',no,pn==='No')}</div>
+  </div>`;
+}
+function playerQListHTML(arr){return arr.map(playerQCardHTML).join('');}
 function openQuestionPred(id){
   const q=_questionMap[id]; if(!q)return;
   closeModal('teamPredModal'); // hide the question list so the forecast modal is on top
@@ -870,7 +928,9 @@ async function loadQuestionPcts(questions,rerender){
     questions.forEach(q=>{
       const opts=bySlug[q.slug]; if(!opts)return;
       const a=opts.find(o=>o.side==='a'),b=opts.find(o=>o.side==='b');
-      const av=Number((a&&a.fc_allocated)||0)+100,bv=Number((b&&b.fc_allocated)||0)+100; // virtual liquidity
+      const realA=Number((a&&a.fc_allocated)||0),realB=Number((b&&b.fc_allocated)||0);
+      const av=realA+100,bv=realB+100;                 // virtual liquidity
+      q.pool=realA+realB;                              // real engaged pool (0 → no pool line)
       q.yes=Math.round(av/(av+bv)*100);
     });
     if(rerender)rerender();

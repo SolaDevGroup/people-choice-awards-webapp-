@@ -80,6 +80,7 @@ const txData=[
   {date:'May 8, 2025',time:'08:15 PM',desc:'Welcome Bonus',sub:'New fan reward',type:'redemption',amt:250,bal:1280,ic:'celebration',col:'var(--teal)',bg:'rgba(0,230,196,.12)'}
 ];
 const TX_BADGE={purchase:['Purchase','var(--green)','rgba(11,168,74,.1)'],vote:['Vote','var(--blue)','rgba(61,107,255,.1)'],
+  prediction:['Prediction','var(--purple)','var(--purple-a)'],
   redemption:['Redemption','var(--gold)','rgba(255,182,0,.14)'],refund:['Refund','var(--teal)','rgba(0,230,196,.12)']};
 state.txTab='all';
 // fc_ledger.type → UI tab category + how to display the row.
@@ -91,9 +92,9 @@ const LEDGER_MAP={
   achievement_reward:  {cat:'redemption',t:'Achievement',     ic:'emoji_events',         col:'var(--gold)',    bg:'rgba(255,182,0,.14)'},
   vote_spend:          {cat:'vote',      t:'Vote Cast',       ic:'how_to_vote',          col:'var(--blue)',    bg:'rgba(61,107,255,.1)'},
   vote_refund:         {cat:'refund',    t:'Vote Refund',     ic:'undo',                 col:'var(--green)',   bg:'rgba(11,168,74,.1)'},
-  prediction_stake:    {cat:'vote',      t:'Forecast Stake',  ic:'insights',             col:'var(--purple-2)',bg:'var(--purple-a)'},
-  prediction_payout:   {cat:'redemption',t:'Forecast Win',    ic:'emoji_events',         col:'var(--green)',   bg:'rgba(11,168,74,.1)'},
-  prediction_refund:   {cat:'refund',    t:'Forecast Refund', ic:'undo',                 col:'var(--green)',   bg:'rgba(11,168,74,.1)'},
+  prediction_stake:    {cat:'prediction',t:'FC Engaged',      ic:'insights',             col:'var(--purple-2)',bg:'var(--purple-a)'},
+  prediction_payout:   {cat:'prediction',t:'Forecast Win',    ic:'emoji_events',         col:'var(--green)',   bg:'rgba(11,168,74,.1)'},
+  prediction_refund:   {cat:'prediction',t:'Forecast Refund', ic:'undo',                 col:'var(--green)',   bg:'rgba(11,168,74,.1)'},
   cosmetic_purchase:   {cat:'redemption',t:'Profile Item',    ic:'auto_awesome',         col:'var(--purple)',  bg:'var(--purple-a)'},
   merch_purchase:      {cat:'redemption',t:'Merch Redemption',ic:'redeem',               col:'var(--pink)',    bg:'rgba(255,32,101,.1)'},
   treasury_contribution:{cat:'vote',     t:'Treasury',        ic:'savings',              col:'var(--blue)',    bg:'rgba(61,107,255,.1)'},
@@ -113,6 +114,10 @@ async function loadTransactions(){
       const d=new Date(r.created_at), amt=Number(r.amount)||0;
       let usd='', sub=r.description||'';
       if(r.type==='purchase' && typeof fcPacks!=='undefined'){ const pk=fcPacks.find(p=>p.fc===amt); if(pk){usd=pk.price; sub=pk.name;} }
+      // engagement wording for forecasts (this is a fan-engagement product, not betting)
+      if(r.type==='prediction_stake') sub='Engaged in a forecast';
+      else if(r.type==='prediction_payout') sub='Forecast winnings';
+      else if(r.type==='prediction_refund') sub='Forecast returned';
       return { date:d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
         time:d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),
         desc:m.t, sub, type:m.cat, amt, bal:Number(r.balance_after)||0,

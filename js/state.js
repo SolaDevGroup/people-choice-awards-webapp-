@@ -45,6 +45,10 @@ function go(v){
   const inMore=['markets','compare','notifications','analytics','signup','login','profile','startingxi','games','settings','transactions'].includes(v);
   document.getElementById('moreBtn').classList.toggle('active',inMore);
   if(window.innerWidth<1024)closeMenu();
+  // Player Detail has no footer / decor-bar in the design — hide them there, show elsewhere.
+  const fb=document.querySelector('.footer'),db=document.querySelector('.decor-bar');
+  if(fb)fb.style.display=(v==='player')?'none':'';
+  if(db)db.style.display=(v==='player')?'none':'';
   window.scrollTo({top:0,behavior:'instant'});
   setTimeout(observeReveals,30);
   if(v==='transactions'&&typeof loadTransactions==='function')loadTransactions(); // fresh ledger
@@ -72,14 +76,19 @@ setInterval(tick,1000); // first immediate tick() is invoked from init.js (after
 // whenever vote counts refresh). No fake auto-incrementing counter.
 
 /* ════════ SHARED PIECES ════════ */
-const avatarHTML=(p,size)=>{const s=size||42;const fh=Math.max(11,Math.round(s*.34));const fi=flagImg(p.country,fh);return `<div class="avatar" style="width:${s}px;height:${s}px;font-size:${Math.round(s*.32)}px;">${p.short}${fi?`<span class="flag-chip">${fi}</span>`:`<span class="flag">${p.flag}</span>`}</div>`;};
+const avatarHTML=(p,size)=>{const s=size||42;const fh=Math.max(11,Math.round(s*.34));const fi=flagImg(p.country,fh);
+  // real player photo on top of the initials (which show through if the photo is missing/fails)
+  const photo=(p&&p.photo)?`<img class="avatar-img" src="${p.photo}" alt="" loading="lazy" onerror="this.remove()">`:'';
+  return `<div class="avatar" style="width:${s}px;height:${s}px;font-size:${Math.round(s*.32)}px;">${p.short||''}${photo}${fi?`<span class="flag-chip">${fi}</span>`:`<span class="flag">${p.flag}</span>`}</div>`;};
 const trendHTML=t=>t>0?`<div class="p-trend up">+${t.toFixed(1)}%</div>`:t<0?`<div class="p-trend down">${t.toFixed(1)}%</div>`:`<div class="p-trend flat-t">—</div>`;
 
 /* dark player card */
 function pcardHTML(p,markSize){
   const fi=flagImg(p.country,18);
-  return `<div class="pcard-shine"></div>
+  // real player photo fills the card; fall back to the big jersey number when there's none
+  const photo=(p&&p.photo)?`<img class="pcard-img" src="${p.photo}" alt="${(p.name||'').replace(/"/g,'')}" loading="lazy" onerror="this.remove();this.closest('.pcard')&&this.closest('.pcard').classList.remove('has-photo')">`:'';
+  return `${photo}<div class="pcard-shine"></div>
     <span class="pcard-flag">${fi||p.flag}</span>
-    <div class="pcard-mark" style="font-size:${markSize}px;">${p.num}</div>`;
+    ${photo?'':`<div class="pcard-mark" style="font-size:${markSize}px;">${p.num}</div>`}`;
 }
 
