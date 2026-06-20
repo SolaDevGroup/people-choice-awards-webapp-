@@ -664,7 +664,7 @@ function mkOption(m,o,pct,active){
   const player=o.pid?players.find(x=>x.dbId===o.pid||x.id===o.pid):null;
   const av=isYN?'':(player&&player.photo?`<img class="mk-av" src="${player.photo}" alt="">`:(player?`<span class="mk-av mk-av-i">${player.short||''}</span>`:''));
   const nm=isYN
-    ?`<img class="mk-yn-img" src="assets/${(o.n||'').toLowerCase()}_${active?'active':'inactive'}.png" alt="${o.n}">`
+    ?`<img class="mk-yn-img" src="assets/${(o.n||'').toLowerCase()}_${active?'active':'inactive'}.svg" alt="${o.n}">`
     :`<span class="mk-name">${(o.n||'').toUpperCase()}</span>`;
   // Real predictors (supporter_count = total). Avatars come from market_predictors() — up to
   // 3 recent faces; if the RPC isn't live yet, fall back to the current user on their own pick.
