@@ -234,11 +234,22 @@ function grantXP(amt,reason){
   if(after.n!==before){addNotif('rankings','military_tech','var(--gold)','rgba(255,182,0,.14)','Level up! You\u2019re now '+after.n,'Keep voting and forecasting to climb higher.');toast('Level up · '+after.n+' 🎉','military_tech');}
   updateLevelUI();
 }
+const LVL_TARGET=[0,500,1500,3000,5000,8000,12000]; // XP to reach each level (1..6)
 function updateLevelUI(){
-  const lv=levelFor(state.xp),nx=nextLevel(state.xp);
-  const pct=nx?Math.round((state.xp-lv.min)/(nx.min-lv.min)*100):100;
+  const p=state.profile;
+  const xp=Number(p&&p.reputation_xp)||Number(state.xp)||0;
+  const L=Math.max(1,Math.min(6,(p&&p.reputation_level)||1));
+  const name=(typeof REP_LEVEL_NAMES!=='undefined'&&REP_LEVEL_NAMES[L])||'Rookie';
+  const min=LVL_TARGET[L-1]||0, next=LVL_TARGET[L]||(min+4000);
+  const pct=Math.max(0,Math.min(100,Math.round((xp-min)/((next-min)||1)*100)));
   document.querySelectorAll('.xp-fill').forEach(f=>f.style.width=pct+'%');
-  const sv=document.getElementById('setVotes');if(sv)sv.textContent=fmt(state.totalVotes);
+  document.querySelectorAll('.lvl-name').forEach(e=>e.textContent=name);
+  document.querySelectorAll('.lvl-xp').forEach(e=>e.textContent=`${fmt(xp)} / ${fmt(next)} XP`);
+  if(typeof pInit==='function')document.querySelectorAll('.acct-init').forEach(e=>e.textContent=pInit());
+  const votes=state.myVote?1:0; // pass model: one vote per user
+  ['setVotes','statVotes'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent=fmt(votes);});
+  const c=p&&p.country_code;
+  document.querySelectorAll('.acct-country-rank .rank-country').forEach(e=>e.textContent=c||'');
 }
 const DAILY_LADDER=[50,75,100,150,200,300,500];
 function renderDaily(){
@@ -311,36 +322,80 @@ function pSelect(opts){return `<div class="pref-select-wrap"><select class="pref
 function pSeg(opts,act){return `<div class="seg">${opts.map((o,i)=>`<button class="seg-btn ${i===(act||0)?'active':''}" onclick="segPick(this)">${o}</button>`).join('')}</div>`;}
 function lkRow(ic,name,sub,right){return `<button class="link-row" onclick="${right?'':''}"><span class="lr-ic"><span class="material-icons-outlined">${ic}</span></span><div style="flex:1;min-width:0;"><div class="pref-name">${name}</div><div class="pref-sub">${sub}</div></div>${right||'<span class="material-icons-round chev">chevron_right</span>'}</button>`;}
 
+/* ---- real profile accessors + Settings actions ---- */
+function escAttr(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function pName(){return (state.profile&&state.profile.display_name)||(state.user&&state.user.email?state.user.email.split('@')[0]:'')||'';}
+function pInit(){const n=pName()||'FC';return ((n.match(/[A-Za-z0-9]+/g)||['F','C']).map(w=>w[0]).join('').slice(0,2)||'FC').toUpperCase();}
+function pSince(){const t=(state.profile&&state.profile.created_at)||(state.user&&state.user.created_at);return t?new Date(t).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—';}
+function selSet(id,opts,sel){const list=sel&&opts.indexOf(sel)<0?[sel,...opts]:opts;return `<select id="${id}" class="select-input">${list.map(o=>`<option${o===sel?' selected':''}>${escAttr(o)}</option>`).join('')}</select>`;}
+async function saveAccountInfo(){
+  if(!requireAuth())return; const name=(document.getElementById('setFullName').value||'').trim();
+  const {error}=await _sb.from('profiles').update({display_name:name}).eq('id',state.user.id);
+  if(error){toast(error.message,'error');return;}
+  state.profile.display_name=name; renderProfileHero(); renderAuthUI(); toast('Account changes saved','check');
+}
+async function changeEmail(){
+  if(!requireAuth())return; const email=(document.getElementById('setEmail').value||'').trim();
+  if(!/.+@.+\..+/.test(email)){toast('Enter a valid email','error');return;}
+  const {error}=await _sb.auth.updateUser({email});
+  if(error){toast(error.message,'error');return;} toast('Confirmation sent to '+email,'mail');
+}
+async function changeUsername(){
+  if(!requireAuth())return; const u=(document.getElementById('setUsername').value||'').trim().replace(/^@/,'');
+  if(!u){toast('Enter a username','error');return;}
+  const {error}=await _sb.from('profiles').update({username:u}).eq('id',state.user.id);
+  if(error){toast(/duplicate|unique|23505/i.test(error.message||error.code||'')?'Username already taken':error.message,'error');return;}
+  state.profile.username=u; renderProfileHero(); toast('Username updated','check');
+}
+async function saveProfile(){
+  if(!requireAuth())return;
+  const upd={display_name:(document.getElementById('setDispName').value||'').trim(),
+    bio:(document.getElementById('setBio').value||'').trim(),
+    favorite_club:document.getElementById('setFavClub').value,
+    country_code:document.getElementById('setFavTeam').value};
+  const {error}=await _sb.from('profiles').update(upd).eq('id',state.user.id);
+  if(error){toast(error.message,'error');return;}
+  Object.assign(state.profile,upd); renderProfileHero(); renderAuthUI(); toast('Profile updated','check');
+}
+async function updatePassword(){
+  if(!requireAuth())return;
+  const np=document.getElementById('setNewPass').value, cp=document.getElementById('setConfPass').value;
+  if(!np||np.length<6){toast('Password must be at least 6 characters','lock');return;}
+  if(np!==cp){toast('Passwords do not match','error');return;}
+  const {error}=await _sb.auth.updateUser({password:np});
+  if(error){toast(error.message,'error');return;}
+  document.getElementById('setNewPass').value='';document.getElementById('setConfPass').value='';
+  toast('Password updated','lock');
+}
 const SET_PANELS={
   account:()=>`
     <div class="card set-card">
       <div class="set-card-title">Account Information</div>
       <div class="acct-grid">
         <div class="acct-avatar-col"><div class="set-label">Profile Picture</div>
-          <div class="acct-avatar"><div class="profile-avatar" style="width:64px;height:64px;font-size:22px;">AF</div>
+          <div class="acct-avatar"><div class="profile-avatar" style="width:64px;height:64px;font-size:22px;">${pInit()}</div>
             <button class="acct-cam" onclick="toast('Photo upload coming soon','photo_camera')"><span class="material-icons-round">photo_camera</span></button></div></div>
         <div class="acct-fields">
-          <div class="field"><label class="set-label">Full Name</label><input class="text-input" value="Alex Fan"></div>
-          <div class="field"><label class="set-label">Email Address</label><div class="field-inline"><input class="text-input" value="alex.fan@email.com"><button class="link-btn" onclick="toast('Verification email sent','mail')">Change</button></div></div>
-          <div class="field"><label class="set-label">Username</label><div class="field-inline"><input class="text-input" value="@alexfan"><button class="link-btn" onclick="toast('Username updated','check')">Change</button></div></div>
-          <div class="field"><label class="set-label">Member Since</label><div class="text-input static"><span class="material-icons-outlined">event</span>May 10, 2024</div></div>
+          <div class="field"><label class="set-label">Full Name</label><input id="setFullName" class="text-input" value="${escAttr(pName())}"></div>
+          <div class="field"><label class="set-label">Email Address</label><div class="field-inline"><input id="setEmail" class="text-input" value="${escAttr((state.user&&state.user.email)||'')}"><button class="link-btn" onclick="changeEmail()">Change</button></div></div>
+          <div class="field"><label class="set-label">Username</label><div class="field-inline"><input id="setUsername" class="text-input" value="${escAttr((state.profile&&state.profile.username)?'@'+state.profile.username:'')}"><button class="link-btn" onclick="changeUsername()">Change</button></div></div>
+          <div class="field"><label class="set-label">Member Since</label><div class="text-input static"><span class="material-icons-outlined">event</span>${pSince()}</div></div>
         </div></div>
     </div>
     <div class="card set-card">
       <div class="set-card-title">Voting Preferences</div>
-      ${pRow('fitness_center','Default Vote Weight','Choose your default voting weight',pSeg(['Normal (1x)','Premium (2x)','Custom'],0))}
       ${pRow('check_circle','Vote Confirmation','Show a confirmation after each vote',pToggle(true))}
     </div>
-    <button class="btn btn-primary" style="align-self:flex-start;" onclick="toast('Account changes saved','check')">Save Changes</button>`,
+    <button class="btn btn-primary" style="align-self:flex-start;" onclick="saveAccountInfo()">Save Changes</button>`,
 
   profile:()=>`
     <div class="card set-card">
       <div class="set-card-title">Public Profile</div>
-      <div class="field" style="margin-bottom:14px;"><label class="set-label">Display Name</label><input class="text-input" value="Alex Fan"></div>
-      <div class="field" style="margin-bottom:14px;"><label class="set-label">Bio</label><textarea class="text-input" rows="3" style="resize:vertical;" placeholder="Tell other fans about yourself…">Lifelong football fan. Allez les Bleus 🇫🇷</textarea></div>
+      <div class="field" style="margin-bottom:14px;"><label class="set-label">Display Name</label><input id="setDispName" class="text-input" value="${escAttr(pName())}"></div>
+      <div class="field" style="margin-bottom:14px;"><label class="set-label">Bio</label><textarea id="setBio" class="text-input" rows="3" style="resize:vertical;" placeholder="Tell other fans about yourself…">${escAttr((state.profile&&state.profile.bio)||'')}</textarea></div>
       <div class="acct-fields">
-        <div class="field"><label class="set-label">Favorite National Team</label>${pSelectInline(['France','Brazil','England','Argentina','Spain','Morocco'])}</div>
-        <div class="field"><label class="set-label">Favorite Club</label>${pSelectInline(['Real Madrid','Barcelona','Man City','Arsenal','PSG','Bayern'])}</div>
+        <div class="field"><label class="set-label">Favorite National Team</label>${selSet('setFavTeam',['France','Brazil','England','Argentina','Spain','Morocco','Germany','Morocco','United States','Mexico','Canada'],(state.profile&&state.profile.country_code)||'')}</div>
+        <div class="field"><label class="set-label">Favorite Club</label>${selSet('setFavClub',['Real Madrid','Barcelona','Man City','Arsenal','PSG','Bayern','Liverpool','Chelsea'],(state.profile&&state.profile.favorite_club)||'')}</div>
       </div>
     </div>
     <div class="card set-card">
@@ -349,7 +404,7 @@ const SET_PANELS={
       ${pRow('flag','Show Country Flag','Display your flag on your profile & votes',pToggle(true))}
       ${pRow('leaderboard','Show on Leaderboards','Appear in global & country rankings',pToggle(true))}
     </div>
-    <button class="btn btn-primary" style="align-self:flex-start;" onclick="toast('Profile updated','check')">Save Profile</button>`,
+    <button class="btn btn-primary" style="align-self:flex-start;" onclick="saveProfile()">Save Profile</button>`,
 
   preferences:()=>`
     <div class="card set-card">
@@ -389,12 +444,11 @@ const SET_PANELS={
   privacy:()=>`
     <div class="card set-card">
       <div class="set-card-title">Change Password</div>
-      <div class="field" style="margin-bottom:12px;"><label class="set-label">Current Password</label><input class="text-input" type="password" value="********"></div>
       <div class="acct-fields">
-        <div class="field"><label class="set-label">New Password</label><input class="text-input" type="password" placeholder="••••••••"></div>
-        <div class="field"><label class="set-label">Confirm New Password</label><input class="text-input" type="password" placeholder="••••••••"></div>
+        <div class="field"><label class="set-label">New Password</label><input id="setNewPass" class="text-input" type="password" placeholder="••••••••"></div>
+        <div class="field"><label class="set-label">Confirm New Password</label><input id="setConfPass" class="text-input" type="password" placeholder="••••••••"></div>
       </div>
-      <button class="btn btn-primary" style="margin-top:14px;" onclick="toast('Password updated','lock')">Update Password</button>
+      <button class="btn btn-primary" style="margin-top:14px;" onclick="updatePassword()">Update Password</button>
     </div>
     <div class="card set-card">
       <div class="set-card-title">Security</div>

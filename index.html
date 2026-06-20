@@ -61,11 +61,6 @@
 
 
 <!-- SPLASH -->
-<div id="splash">
-  <video id="splashVideo" muted playsinline autoplay preload="auto"></video>
-  <button id="splashSkip" onclick="hideSplash()">Skip ›</button>
-</div>
-
 <!-- HEADER DECOR (4px, fixed under header) -->
 <div class="header-decor"></div>
 
@@ -321,12 +316,12 @@
     </div>
 
     <!-- 11 REWARDS — level -->
-    <div class="sec-row"><span class="lbl">Your Level</span><span class="caption" style="color:var(--ink-4);font-weight:600;">2,410 / 5,000 XP</span></div>
+    <div class="sec-row"><span class="lbl">Your Level</span><span class="caption lvl-xp" style="color:var(--ink-4);font-weight:600;">0 XP</span></div>
     <div class="level-row">
       <div class="level-medal">🏆</div>
       <div style="flex:1;">
-        <div class="h3" style="font-size:18px;">Gold Fan</div>
-        <div class="xp-track"><div class="xp-fill" style="width:48%;"></div></div>
+        <div class="h3 lvl-name" style="font-size:18px;">Rookie</div>
+        <div class="xp-track"><div class="xp-fill" style="width:0%;"></div></div>
       </div>
     </div>
 
@@ -418,13 +413,13 @@
         <div class="card set-card">
           <div class="set-card-title">Account Summary</div>
           <div class="level-row" style="margin-top:2px;">
-            <div class="profile-avatar" style="width:44px;height:44px;font-size:15px;">AF</div>
-            <div style="flex:1;"><div class="caption" style="color:var(--ink-3);">Your Level</div><div class="h3" style="font-size:17px;">Gold Fan</div>
-              <div class="xp-track"><div class="xp-fill" style="width:48%;"></div></div>
-              <div class="caption" style="color:var(--ink-4);text-align:right;margin-top:4px;">2,410 / 5,000 XP</div></div>
+            <div class="profile-avatar acct-init" style="width:44px;height:44px;font-size:15px;">FC</div>
+            <div style="flex:1;"><div class="caption" style="color:var(--ink-3);">Your Level</div><div class="h3 lvl-name" style="font-size:17px;">Rookie</div>
+              <div class="xp-track"><div class="xp-fill" style="width:0%;"></div></div>
+              <div class="caption lvl-xp" style="color:var(--ink-4);text-align:right;margin-top:4px;">0 XP</div></div>
           </div>
-          <div class="summary-stat"><span class="material-icons-outlined">how_to_vote</span><span>Total Votes</span><strong id="setVotes">128</strong></div>
-          <div class="summary-stat"><span class="material-icons-outlined">flag</span><span>Country Rank</span><strong>#24<small>United States</small></strong></div>
+          <div class="summary-stat"><span class="material-icons-outlined">how_to_vote</span><span>Total Votes</span><strong id="setVotes">0</strong></div>
+          <div class="summary-stat acct-country-rank"><span class="material-icons-outlined">flag</span><span>Country Rank</span><strong><span class="rank-val">—</span><small class="rank-country"></small></strong></div>
           <div class="summary-stat"><span class="material-icons-outlined">public</span><span>Global Rank</span><strong>Top 1%<small>Among all voters</small></strong></div>
           <button class="btn btn-secondary btn-block" style="margin-top:14px;color:var(--purple);border-color:var(--purple-soft);" onclick="go('profile')">View Profile</button>
         </div>
@@ -498,8 +493,8 @@
             <div class="field"><label class="set-label">Payment Method</label><select id="fltMethod" class="select-input"><option value="all">All Methods</option><option value="purchase">Card / Wallet (purchases)</option><option value="fc">Fan Credits</option></select></div>
             <div class="field"><label class="set-label">Status</label><select id="fltStatus" class="select-input"><option value="all">All Statuses</option><option value="completed">Completed</option><option value="pending">Pending</option></select></div>
           </div>
-          <button class="btn btn-block" style="margin-top:14px;background:var(--purple-soft);color:var(--purple);" onclick="applyTxFilters()">Apply Filters</button>
-          <button class="btn btn-block" style="margin-top:8px;background:none;color:var(--purple);" onclick="resetTxFilters()">Reset Filters</button>
+          <button class="btn btn-block" style="margin-top:14px;height:40px;padding-top:0;padding-bottom:0;background:var(--purple-soft);color:var(--purple);" onclick="applyTxFilters()">Apply Filters</button>
+          <button class="btn btn-block" style="margin-top:8px;height:40px;padding-top:0;padding-bottom:0;background:none;color:var(--purple);" onclick="resetTxFilters()">Reset Filters</button>
         </div>
         <div class="card set-card">
           <div class="set-card-title">Need Help?</div>
@@ -865,14 +860,26 @@
 </div>
 
 <!-- ═══ FC CREDITS MODAL ═══ -->
-<div class="modal-backdrop" id="creditsModal" onclick="backdropClose(event,'creditsModal')">
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Get Fan Credits">
-    <button class="modal-close" onclick="closeModal('creditsModal')"><span class="material-icons-round">close</span></button>
-    <div class="modal-pad">
-      <span class="lbl" style="color:var(--purple);">Fan Credits</span>
-      <h2 class="h2" style="text-transform:uppercase;margin-top:4px;">Get Fan Credits</h2>
-      <p class="caption" style="color:var(--ink-3);margin-top:6px;line-height:1.6;">Support players and forecast outcomes. FC has no cash value and can never be withdrawn.</p>
-      <div class="stack" style="margin-top:16px;gap:10px;" id="fcPackList"></div>
+<div class="modal-backdrop vp-backdrop" id="creditsModal" onclick="backdropClose(event,'creditsModal')">
+  <div class="vp-top">
+    <button class="vp-back" onclick="closeModal('creditsModal')" aria-label="Back"><span class="material-icons-round">chevron_left</span></button>
+    <div>
+      <div class="vp-top-title">Get Fan Credits</div>
+      <div class="vp-top-sub">Win predictions using Fan Credits (FC)</div>
+    </div>
+  </div>
+  <div class="vp-card" role="dialog" aria-modal="true" aria-label="Get Fan Credits">
+    <div class="vp-left fc-left">
+      <h2 class="vp-title"><span>Get Fan Credits</span></h2>
+      <p class="vp-sub">Support players and forecast outcomes. FC has no cash value and can never be withdrawn.</p>
+      <div class="fc-hero-coin"><img class="fc-coin" alt="FC"></div>
+    </div>
+    <div class="vp-right fc-right">
+      <div class="fc-packs" id="fcPackList"></div>
+      <button class="vp-pay card" onclick="creditsCheckout()"><span class="material-icons-round">credit_card</span>Card Payment</button>
+      <div class="vp-secure"><span class="material-icons-round">lock</span>Secure checkout via Stripe.</div>
+      <div class="vp-fine">One-time purchase · Fan Credits have no cash value and can never be withdrawn.</div>
+      <div class="vp-legal"><a onclick="openModal('termsModal')">Terms of Service</a> &nbsp;•&nbsp; <a onclick="openModal('privacyModal')">Privacy Policy</a></div>
     </div>
   </div>
 </div>

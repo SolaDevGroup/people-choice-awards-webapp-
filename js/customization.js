@@ -135,16 +135,31 @@ function renderProfileHero(){
   const deco=eq.decoration&&custItems.find(i=>i.id===eq.decoration);
   const av=eq.avatar&&custItems.find(i=>i.id===eq.avatar);
   const np=eq.nameplate&&custItems.find(i=>i.id===eq.nameplate);
-  const avInner=av?`<div class="cust-av ${av.anim?'cust-anim':''}" style="width:72px;height:72px;background:${gradFromColors(av.colors)};font-size:30px;">⚽</div>`:`<div class="profile-avatar" style="width:72px;height:72px;font-size:26px;">AF</div>`;
+  // Real profile data
+  const p=state.profile;
+  const name=(p&&p.display_name)||(state.user&&state.user.user_metadata&&state.user.user_metadata.display_name)||(state.user&&state.user.email&&state.user.email.split('@')[0])||'Guest';
+  const initials=((name.match(/[A-Za-z0-9]+/g)||['F','C']).map(w=>w[0]).join('').slice(0,2)||'FC').toUpperCase();
+  const handle=(p&&p.username)?('@'+p.username):(state.user?('@'+name.toLowerCase().replace(/[^a-z0-9]+/g,'')):'');
+  const country=p&&p.country_code;
+  const flag=country?(flagImg(country,14)||''):'';
+  const level=(p&&typeof REP_LEVEL_NAMES!=='undefined'&&REP_LEVEL_NAMES[p.reputation_level])||'Rookie';
+  // "Plan" badge = the FC pack they bought (highest), else Supporter Pass, else nothing.
+  let badge='';
+  if(state.plan&&typeof PACK_KEYS!=='undefined'){
+    const i=PACK_KEYS.indexOf(state.plan.pack);
+    badge=`<span class="premium-pill">${(i>=0&&typeof fcPacks!=='undefined')?fcPacks[i].name:'Plan'}</span>`;
+  } else if(state.hasPass){ badge=`<span class="premium-pill">Supporter</span>`; }
+
+  const avInner=av?`<div class="cust-av ${av.anim?'cust-anim':''}" style="width:72px;height:72px;background:${gradFromColors(av.colors)};font-size:30px;">⚽</div>`:`<div class="profile-avatar" style="width:72px;height:72px;font-size:26px;">${initials}</div>`;
   const avatarBlock=deco?decoRing(deco,avInner,72):avInner;
-  const nameBlock=np?nameplateHTML(np,'Alex Fan'):`<span class="h3" style="font-size:22px;">Alex Fan</span>`;
+  const nameBlock=np?nameplateHTML(np,name):`<span class="h3" style="font-size:22px;">${name}</span>`;
   el.innerHTML=`
     ${banner?`<div class="profile-banner" style="background:${gradFromColors(banner.colors)};"><div class="cust-banner-shine"></div></div>`:''}
     <div class="profile-id ${banner?'with-banner':''}">
       ${avatarBlock}
       <div style="min-width:0;">
-        <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;">${nameBlock}<span class="premium-pill">Premium</span></div>
-        <div class="caption" style="color:var(--ink-3);margin-top:4px;">🇦🇪 Gold Fan · @alexfan</div>
+        <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;">${nameBlock}${badge}</div>
+        <div class="caption" style="color:var(--ink-3);margin-top:4px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">${flag}<span>${level}${handle?' · '+handle:''}</span></div>
       </div>
     </div>`;
 }

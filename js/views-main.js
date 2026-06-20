@@ -585,45 +585,53 @@ function donut(aPct,size,colorA,colorB,thick){
   return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="display:block;">
     <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${colorB}" stroke-width="${thick}"/>
     <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${colorA}" stroke-width="${thick}"
-      stroke-dasharray="${c}" stroke-dashoffset="${off}" stroke-linecap="round" transform="rotate(-90 ${size/2} ${size/2})"/>
+      stroke-dasharray="${c}" stroke-dashoffset="${off}" stroke-linecap="butt" transform="rotate(-90 ${size/2} ${size/2})"/>
   </svg>`;
 }
 function fillCompareSelects(){
   const opts=players.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
   cmpA.innerHTML=opts;cmpB.innerHTML=opts;
-  // default to the first two real players (hardcoded slugs don't exist in live data)
-  cmpA.value=players[0]?players[0].id:'';
-  cmpB.value=players[1]?players[1].id:(players[0]?players[0].id:'');
+  // default to two players that actually have votes (so the vote comparison shows a real
+  // split, not 100/0). players is sorted votes-desc, so the top two voted players win;
+  // fall back to the first two players if fewer than two have any votes.
+  const voted=players.filter(p=>p.votes>0);
+  const pick=voted.length>=2?voted:players;
+  cmpA.value=pick[0]?pick[0].id:'';
+  cmpB.value=pick[1]?pick[1].id:(pick[0]?pick[0].id:'');
+  renderCompare();
+}
+function cmpCard(p,side){
+  const img=p.photo?`<img class="cmp2-photo" src="${p.photo}" alt="${(p.name||'').replace(/"/g,'')}" onerror="this.remove()">`:'';
+  return `<div class="cmp2-card ${side}" onclick="openPlayer('${p.id}','compare')"><span class="cmp2-init">${p.short||''}</span>${img}</div>`;
 }
 function renderCompare(){
   const a=players.find(p=>p.id===cmpA.value),b=players.find(p=>p.id===cmpB.value);
   if(!a||!b){if(typeof compareBody!=='undefined'&&compareBody)compareBody.innerHTML='';return;}
-  // Only stats a public football API can actually provide (top speed / trophies /
-  // win rate have no source, so they're omitted rather than shown as fake/zero).
-  const rows=[['Goals','goals'],['Assists','assists'],['Matches','matches'],['Goals per Match','gpm']];
-  const aPct=Math.round(a.votes/(a.votes+b.votes)*100)||0;
+  const aPct=(a.votes+b.votes)?Math.round(a.votes/(a.votes+b.votes)*100):50;
+  // Real, API-backed stats (top speed / shots-on-target / passes have no data source).
+  const rows=[['WC Appearances','matches',0],['Most WC Goals','goals',0],['Most WC Assists','assists',0],['Goals / Match','gpm',2]];
   compareBody.innerHTML=`
-  <div class="cmp-pickers">
-    <div class="pcard cmp-photo" onclick="openPlayer('${a.id}','compare')">${pcardHTML(a,56)}
-      <div class="cmp-photo-lbl">${a.name.split(' ').slice(-1)[0]}<span class="caption">${flagImg(a.country,14)||a.flag} ${a.country}</span></div></div>
-    <div class="vs">VS</div>
-    <div class="pcard cmp-photo" onclick="openPlayer('${b.id}','compare')">${pcardHTML(b,56)}
-      <div class="cmp-photo-lbl">${b.name.split(' ').slice(-1)[0]}<span class="caption">${flagImg(b.country,14)||b.flag} ${b.country}</span></div></div>
+  <div class="cmp2-cards">
+    ${cmpCard(a,'a')}
+    <div class="cmp2-vs">VS</div>
+    ${cmpCard(b,'b')}
   </div>
-  <div style="margin-top:18px;">
-    ${rows.map(([lbl,k,suf])=>{
-      const av=a[k],bv=b[k],tot=av+bv||1,pct=Math.round(av/tot*100);
-      return `<div class="cmp-row">
-        <div class="cmp-val">${av}${suf||''}</div>
-        <div class="cmp-mid"><div class="cmp-bar"><div class="cmp-fill" style="width:${pct}%;"></div></div><div class="cmp-lbl">${lbl}</div></div>
-        <div class="cmp-val r">${bv}${suf||''}</div>
+  <div class="cmp2-sec">Vote Comparison</div>
+  <div class="cmp2-vote">
+    <div class="cmp2-vote-side"><div class="cmp2-vote-name">${a.last}</div><div class="cmp2-vote-pct">${aPct}%</div></div>
+    <div class="cmp2-donut">${donut(aPct,100,'#4000FF','#E7DFFF',16)}</div>
+    <div class="cmp2-vote-side r"><div class="cmp2-vote-name">${b.last}</div><div class="cmp2-vote-pct">${100-aPct}%</div></div>
+  </div>
+  <div class="cmp2-stats">
+    ${rows.map(([lbl,k,dec])=>{
+      const av=Number(a[k])||0,bv=Number(b[k])||0,tot=av+bv||1,pct=Math.round(av/tot*100);
+      const show=v=>dec?v.toFixed(dec):fmt(v);
+      // the lower value is de-emphasised (Poppins reg 14); the greater stays Clash bold 24.
+      const aLo=av<bv?' cmp2-lo':'', bLo=bv<av?' cmp2-lo':'';
+      return `<div class="cmp2-stat">
+        <div class="cmp2-stat-top"><span class="cmp2-a${aLo}">${show(av)}</span><span class="cmp2-name">${lbl}</span><span class="cmp2-b${bLo}">${show(bv)}</span></div>
+        <div class="cmp2-bar"><div class="cmp2-fill" style="width:${pct}%;"></div></div>
       </div>`;}).join('')}
-  </div>
-  <div class="sec-row"><span class="lbl">Vote Comparison</span></div>
-  <div class="donut-row">
-    <div class="donut-side">${a.name.split(' ').slice(-1)[0]}<span class="caption">${aPct}%</span></div>
-    ${donut(aPct,116,'#4000FF','#E7DFFF',15)}
-    <div class="donut-side" style="text-align:right;">${b.name.split(' ').slice(-1)[0]}<span class="caption">${100-aPct}%</span></div>
   </div>`;
 }
 
@@ -646,25 +654,49 @@ function marketPcts(m){
   let acc=0;
   return alloc.map((x,i)=>{const v=(i===n-1)?(100-acc):Math.round(x/total*100);acc+=v;return v;});
 }
+// "+1.4k" style overflow count
+function mkCount(n){return n>=1000?'+'+(n/1000).toFixed(1).replace(/\.0$/,'')+'k':'+'+n;}
+function mkInitials(name){const n=(name||'').trim()||'?';return ((n.match(/[A-Za-z0-9]+/g)||[n]).map(w=>w[0]).join('').slice(0,2)||'?').toUpperCase();}
+// one predictor avatar — their photo, else name-initials (sidebar style)
+function mkAvatar(p){return p.photo?`<span class="mk-pa" style="background-image:url('${String(p.photo).replace(/'/g,'')}')"></span>`:`<span class="mk-pa" title="${(p.name||'').replace(/"/g,'')}">${mkInitials(p.name)}</span>`;}
+function mkOption(m,o,pct,active){
+  const isYN=m.kind==='yn';
+  const player=o.pid?players.find(x=>x.dbId===o.pid||x.id===o.pid):null;
+  const av=isYN?'':(player&&player.photo?`<img class="mk-av" src="${player.photo}" alt="">`:(player?`<span class="mk-av mk-av-i">${player.short||''}</span>`:''));
+  const nm=isYN
+    ?`<img class="mk-yn-img" src="assets/${(o.n||'').toLowerCase()}_${active?'active':'inactive'}.png" alt="${o.n}">`
+    :`<span class="mk-name">${(o.n||'').toUpperCase()}</span>`;
+  // Real predictors (supporter_count = total). Avatars come from market_predictors() — up to
+  // 3 recent faces; if the RPC isn't live yet, fall back to the current user on their own pick.
+  const sup=Number(o.supporters||0);
+  let preds=(typeof marketPredictors!=='undefined'&&marketPredictors[o.id])||[];
+  if(!preds.length && active && state.user){
+    preds=[{name:(typeof pName==='function'?pName():'You'),photo:(state.profile&&state.profile.avatar_url)||''}];
+  }
+  let voters='';
+  if(preds.length){
+    const shown=preds.slice(0,3);
+    const overflow=Math.max(0,sup-shown.length); // "+N" only beyond the avatars shown
+    voters=`<span class="mk-voters"><span class="mk-stack">${shown.map(mkAvatar).join('')}</span>${overflow>0?`<span class="mk-count">${mkCount(overflow)}</span>`:''}</span>`;
+  } else if(sup>0){
+    voters=`<span class="mk-voters"><span class="mk-count">${mkCount(sup)}</span></span>`;
+  }
+  return `<button class="mk-opt ${active?'active':'inactive'}" onclick="openMarketPred('${m.id}')">
+    <span class="mk-fill">${av}${nm}${voters}</span>
+    <span class="mk-pct">${pct}%</span>
+  </button>`;
+}
 function marketCardHTML(m){
-  const a=m.options[0],b=m.options[1],pc=marketPcts(m),pa=pc[0],pb=pc[1];
+  const pc=marketPcts(m);
+  // active option = the one this user has forecast on; if they haven't, both stay grey/inactive
+  const pick=(state.predictions||[]).find(p=>p.market===m.title);
+  const pn=pick&&pick.pick;
   return `<div class="card market-card">
     <div class="market-top"><span class="market-type">${m.type}</span>
       <span class="market-closes"><span class="material-icons-outlined">schedule</span>Closes ${m.closes}</span></div>
     <div class="market-title">${m.title}</div>
-    <div class="market-pool">Pool: <strong>${fmt(m.pool)} FC</strong> · Platform fee 10%</div>
-    <div class="vs-wrap">
-      <button class="vs-side a" onclick="openMarketPred('${m.id}')">
-        <span class="vs-media">${marketSideMedia(a)}</span>
-        <span class="vs-name">${a.n}</span><span class="vs-pct">${pa}%</span>
-      </button>
-      <span class="vs-mid">${m.kind==='vs'?'VS':'OR'}</span>
-      <button class="vs-side b" onclick="openMarketPred('${m.id}')">
-        <span class="vs-pct">${pb}%</span><span class="vs-name">${b.n}</span>
-        <span class="vs-media">${marketSideMedia(b)}</span>
-      </button>
-    </div>
-    <div class="vs-bar"><div class="vs-bar-a" style="width:${pa}%"></div><div class="vs-bar-b" style="width:${pb}%"></div></div>
+    <div class="market-pool">Pool: <strong>${fmt(m.pool)} FC</strong></div>
+    <div class="mk-opts">${m.options.map((o,i)=>mkOption(m,o,pc[i],pn===o.n)).join('')}</div>
   </div>`;
 }
 function openMarketPred(mid){

@@ -41,11 +41,11 @@ let markets=[
 ];
 
 const fcPacks=[
- {name:'Starter Pack',fc:500,price:'$4.99',pop:false},
- {name:'Fan Pack',fc:1200,price:'$9.99',pop:true},
+ {name:'Starter Pack',fc:500,price:'$4.99',pop:false,badge:'Good to start',badgeType:'green'},
+ {name:'Fan Pack',fc:1200,price:'$9.99',pop:true,badge:'Most Popular',badgeType:'purple'},
  {name:'Ultra Pack',fc:2500,price:'$19.99',pop:false},
  {name:'Legend Pack',fc:6500,price:'$49.99',pop:false},
- {name:'Champion Pack',fc:15000,price:'$99.99',pop:false}
+ {name:'Champion Pack',fc:15000,price:'$99.99',pop:false,badge:'Best value',badgeType:'purple'}
 ];
 
 const badges=[

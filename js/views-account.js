@@ -21,13 +21,19 @@ function renderProfile(){
     <div><div class="hist-title">${a.n}</div><div class="hist-sub">${a.s}</div></div>
     <div class="hist-amt">${a.done?'<span class="material-icons-round" style="color:var(--green);font-size:19px;">check_circle</span>':'<span class="lbl-xs">In progress</span>'}</div>
   </div>`).join('');
-  voteHistory.innerHTML=state.myVotes.slice(0,5).map(v=>`
+  // Real voting history: the player this user voted for (Supporter-Pass model = one vote).
+  let myV=[];
+  if(state.myVote&&state.myVote.player_id&&typeof players!=='undefined'){
+    const pl=players.find(x=>x.dbId===state.myVote.player_id);
+    if(pl)myV=[{player:pl.name,short:pl.short,changed:state.myVote.changes_used>0}];
+  }
+  voteHistory.innerHTML=myV.length?myV.map(v=>`
   <div class="hist-row">
     <div class="avatar" style="width:38px;height:38px;font-size:12px;">${v.short||v.player.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
-    <div><div class="hist-title">${v.player}</div><div class="hist-sub">${v.date}</div></div>
-    <div class="hist-amt" style="color:var(--purple);">${v.fc} FC</div>
-  </div>`).join('');
-  statVotes.textContent=fmt(state.totalVotes);
+    <div><div class="hist-title">${v.player}</div><div class="hist-sub">${v.changed?'Changed once':'Your vote'}</div></div>
+    <div class="hist-amt" style="color:var(--green);">✓ Voted</div>
+  </div>`).join(''):`<div class="empty-state" style="padding:22px 0;"><div class="empty-icon"><span class="material-icons-outlined">how_to_vote</span></div><div class="h3">${state.user?'No vote yet':'Sign in to vote'}</div></div>`;
+  if(typeof statVotes!=='undefined'&&statVotes)statVotes.textContent=fmt(state.myVote?1:0);
 }
 
 /* ════════ ANALYTICS ════════ */
@@ -60,16 +66,24 @@ function renderAnalytics(){
 
 /* ════════ FC STORE ════════ */
 function renderFcPacks(){
+  if(typeof state.fcPack!=='number')state.fcPack=2; // default selection (Ultra Pack), as in the design
   fcPackList.innerHTML=fcPacks.map((p,i)=>`
-  <div class="plan-card ${p.pop?'selected':''}" style="border:1.5px solid ${p.pop?'var(--purple)':'var(--border)'};" onclick="buyPack(${i})">
-    <div style="display:flex;align-items:center;gap:12px;">
-      <div class="hist-icon" style="background:rgba(255,182,0,.12);">${fcCoin}</div>
-      <div><div style="font-size:14px;font-weight:800;">${p.name}${p.pop?' <span class="premium-pill" style="vertical-align:2px;">Best value</span>':''}</div>
-      <div class="caption" style="color:var(--ink-3);">${fmt(p.fc)} Fan Credits</div></div>
+  <button class="fc-pack${i===state.fcPack?' selected':''}" onclick="selectPack(${i})" aria-pressed="${i===state.fcPack}">
+    <div class="fc-pack-top">
+      <div class="fc-pack-info">
+        <div class="fc-pack-name">${p.name}</div>
+        <div class="fc-pack-amt">${fmt(p.fc)} FC</div>
+      </div>
+      <img class="fc-coin fc-pack-coin" src="${ASSETS.fc}" alt="FC">
     </div>
-    <div style="font-size:15px;font-weight:900;">${p.price}</div>
-  </div>`).join('');
+    <div class="fc-pack-bottom">
+      ${p.badge?`<span class="fc-badge ${p.badgeType||'purple'}">${p.badge}</span>`:'<span class="fc-badge-spacer"></span>'}
+      <div class="fc-pack-price">${p.price}</div>
+    </div>
+  </button>`).join('');
 }
+function selectPack(i){state.fcPack=i;renderFcPacks();} // highlight the chosen pack
+function creditsCheckout(){buyPack(typeof state.fcPack==='number'?state.fcPack:2);} // Card Payment → checkout selected pack
 // FC pack keys aligned with fcPacks order (data.js) and the Edge Function CATALOG.
 const PACK_KEYS=['starter','fan','ultra','legend','champion'];
 function buyPack(i){

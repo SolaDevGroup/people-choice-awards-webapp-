@@ -95,13 +95,17 @@ async function loadProfile(uid){
     data.country_code=metaCountry;state.profile.country_code=metaCountry;
   }
   state.balance=data.fc_balance;
-  state.totalVotes=data.reputation_xp;
+  state.xp=Number(data.reputation_xp)||0; // drives the level bar (real XP)
   syncBalance();renderAuthUI();
   await loadUserCosmetics();
   await loadVoteState();            // pass + current vote → button states
   if(typeof renderVoteList==='function')renderVoteList();
   loadPredictions();                // the user's real forecast history
   if(typeof loadTransactions==='function')loadTransactions(); // real FC ledger
+  await loadUserPlan();             // purchased pack → profile plan badge
+  if(typeof renderProfileHero==='function')renderProfileHero();
+  if(typeof updateLevelUI==='function')updateLevelUI();   // real level / XP / votes
+  if(typeof renderProfile==='function')renderProfile();   // profile page stats + history
   // The support map needs a country. If this account never set one (e.g. Google sign-up),
   // ask once after the splash so their vote can be plotted.
   const metaC=state.user&&state.user.user_metadata&&state.user.user_metadata.country;
@@ -109,6 +113,15 @@ async function loadProfile(uid){
     state._askedCountry=true;
     setTimeout(()=>{ if(!state.profile.country_code) ensureVoterCountry(); },5600);
   }
+}
+// The highest FC pack the user has bought → shown as their "plan" badge on the profile.
+async function loadUserPlan(){
+  state.plan=null;
+  if(!state.user)return;
+  try{
+    const {data}=await _sb.from('fc_purchase').select('pack,fc_amount').order('fc_amount',{ascending:false}).limit(1);
+    if(data&&data.length)state.plan=data[0];
+  }catch(e){}
 }
 // Whether the user holds the pass + which player they've voted for (and if they've
 // used their one allowed change). Drives every Vote button's enabled/disabled state.
@@ -255,8 +268,7 @@ async function loadUserCosmetics(){
 // Returns true when signed in; otherwise toasts, routes to login, returns false.
 function requireAuth(msg){
   if(state.user)return true;
-  toast(msg||'Sign in to continue','login');
-  go('login');
+  go('login'); // anything that needs auth → straight to the login page (no toast)
   return false;
 }
 const REP_LEVEL_NAMES={1:'Rookie',2:'Bronze Fan',3:'Silver Fan',4:'Gold Fan',5:'Legend Fan',6:'Hall of Fame'};
@@ -344,6 +356,7 @@ function mapPlayer(row, rankByPlayer){
     country,
     flag: COUNTRY_FLAG[country] || '',
     club: row.club || '',
+    photo: row.photo_url || '',
     votes: Number(rank.total_fc || 0),
     trend: 0,
     goals: st.goals||0, assists: st.assists||0, matches: st.matches||0,
@@ -357,7 +370,7 @@ function mapPlayer(row, rankByPlayer){
 function mapMarket(row){
   const options = (row.market_options||[])
     .slice().sort((a,b)=>(a.sort||0)-(b.sort||0))
-    .map(o=>({ id:o.id, n:o.label, p:Number(o.implied_pct||0), alloc:Number(o.fc_allocated||0), pid:o.player_id||undefined }));
+    .map(o=>({ id:o.id, n:o.label, p:Number(o.implied_pct||0), alloc:Number(o.fc_allocated||0), supporters:Number(o.supporter_count||0), pid:o.player_id||undefined }));
   const cat = row.subject_type==='team' ? 'country'
             : row.subject_type==='tournament' ? 'tournament' : 'player';
   return {
@@ -385,12 +398,26 @@ async function fetchAllPlayers(){
   }
   return {data:all, error:null};
 }
+// Recent predictors per option (display_name + avatar) → social-proof avatar stack.
+// Reads the SECURITY DEFINER market_predictors() RPC (3 most-recent, privacy-respecting).
+let marketPredictors={}; // option_id (uuid) -> [{name, photo}]
+async function loadMarketPredictors(){
+  try{
+    const {data,error}=await _sb.rpc('market_predictors');
+    if(error||!Array.isArray(data))return; // RPC not deployed yet → cards just show "+N"
+    const map={};
+    data.forEach(r=>{(map[r.option_id]=map[r.option_id]||[]).push({name:r.display_name||'',photo:r.avatar_url||''});});
+    marketPredictors=map;
+    if(typeof renderMarkets==='function')renderMarkets();
+    if(typeof renderHomeMarkets==='function')renderHomeMarkets();
+  }catch(e){}
+}
 async function loadCatalog(){
   // Markets render fast — load them on their own (NOT behind the heavy ~1,248-player
   // fetch) so the real odds (fc_allocated) show immediately instead of flashing 50/50.
   _sb.from('markets').select('*, market_options!market_id(*)').order('created_at',{ascending:true})
     .then(({data,error})=>{
-      if(data && data.length){ markets=data.map(mapMarket); catalog.marketsLoaded=true; renderMarkets(); renderHomeMarkets(); loadPredictions(); }
+      if(data && data.length){ markets=data.map(mapMarket); catalog.marketsLoaded=true; renderMarkets(); renderHomeMarkets(); loadPredictions(); loadMarketPredictors(); }
       else if(error){ console.warn('[catalog] markets load failed, keeping seed:', error.message); }
     });
   try{
