@@ -599,8 +599,8 @@
       <button class="fc-pill" style="background:rgba(255,255,255,.16);" onclick="openModal('creditsModal')"><img class="fc-coin" alt="FC"><span id="storeBalance">2,450</span></button>
     </div>
     <div class="tab-row" id="storeTabs">
-      <button class="tab-btn active" data-stab="merch" onclick="setStoreTab('merch')">Merchandise</button>
       <button class="tab-btn" data-stab="custom" onclick="setStoreTab('custom')">Profile Customization</button>
+      <button class="tab-btn active" data-stab="merch" onclick="setStoreTab('merch')">Merchandise</button>
     </div>
 
     <!-- MERCH -->
@@ -618,9 +618,9 @@
           <div class="cust-promo-sub">WC26 national-team themes · avatars, decorations, name plates & banners</div></div>
         <span class="cust-promo-go">Preview <span class="material-icons-round">arrow_forward</span></span>
       </div>
-      <div class="chip-row" style="margin-top:14px;" id="custCatChips"></div>
-      <div class="chip-row" style="margin-top:8px;" id="custTeamChips"></div>
-      <div class="merch-grid" style="margin-top:14px;" id="custGrid"></div>
+      <div class="chip-row" style="margin-top:12px;" id="custCatChips"></div>
+      <div class="chip-row" style="margin-top:8px;margin-bottom:12px;" id="custTeamChips"></div>
+      <div class="merch-grid" style="margin-top:0;" id="custGrid"></div>
     </div>
   </div>
 </main>
@@ -906,7 +906,7 @@
     <div class="modal-pad">
       <span class="lbl" style="color:var(--purple);">Forecast</span>
       <h2 class="h3" style="margin-top:6px;line-height:1.3;" id="predQ"></h2>
-      <div class="side-row">
+      <div class="side-row" id="predSideRow">
         <button class="side-btn sel" id="sideYes" onclick="selectSide('a')"><div class="side-lbl" id="sideYesLbl">Yes</div><div class="side-pct" id="predYesPct">50%</div></button>
         <button class="side-btn" id="sideNo" onclick="selectSide('b')"><div class="side-lbl" id="sideNoLbl">No</div><div class="side-pct" id="predNoPct">50%</div></button>
       </div>
@@ -954,23 +954,20 @@
 
 
 <!-- ═══ WELCOME (gamification onboarding) ═══ -->
-<div class="modal-backdrop" id="welcomeModal" onclick="backdropClose(event,'welcomeModal')">
-  <div class="modal" role="dialog" aria-modal="true">
-    <div class="premium-modal-head" style="background:linear-gradient(135deg,#0A0030,#1B0080 60%,var(--purple));border-radius:24px 24px 0 0;padding:30px 24px 26px;color:#fff;position:relative;overflow:hidden;">
-      <div class="prem-deco"><i style="top:-26px;right:-26px;width:92px;height:92px;background:var(--teal);border-radius:0 0 0 100%;"></i><i style="top:-10px;right:54px;width:48px;height:48px;background:var(--gold);border-radius:50%;"></i></div>
-      <div style="position:relative;"><span class="lbl" style="color:var(--teal);">Welcome to WC26 Fan Vote</span>
-      <h2 class="h2" style="color:#fff;text-transform:uppercase;margin-top:6px;">Your Fan Journey Starts Now</h2></div>
+<div class="modal-backdrop ps-backdrop" id="welcomeModal" onclick="backdropClose(event,'welcomeModal')">
+  <div class="ps-sheet welcome-sheet" role="dialog" aria-modal="true" aria-label="Welcome to WC26 Fan Vote">
+   <div class="ps-inner">
+    <span class="ps-tag">Welcome to WC26 Fan Vote</span>
+    <h2 class="ps-title">Your Fan Journey Starts Now</h2>
+    <div class="ps-reward"><img class="fc-coin" id="welcomeCoin" alt="FC"><div><div class="ps-reward-amt">+500 FC</div><div class="ps-reward-sub">Welcome bonus to get you started</div></div></div>
+    <div class="ps-opts">
+      <div class="ps-opt"><span class="ps-ic"><span class="material-icons-round">how_to_vote</span></span><div class="ps-opt-txt"><div class="ps-opt-t">Vote for players</div><div class="ps-opt-s">Earn 10 XP per vote</div></div></div>
+      <div class="ps-opt"><span class="ps-ic"><span class="material-icons-round">insights</span></span><div class="ps-opt-txt"><div class="ps-opt-t">Forecast outcomes</div><div class="ps-opt-s">Earn 15 XP &amp; win FC</div></div></div>
+      <div class="ps-opt"><span class="ps-ic"><span class="material-icons-round">local_fire_department</span></span><div class="ps-opt-txt"><div class="ps-opt-t">Daily streak</div><div class="ps-opt-s">Up to 500 FC every 7 days</div></div></div>
+      <div class="ps-opt"><span class="ps-ic"><span class="material-icons-round">military_tech</span></span><div class="ps-opt-txt"><div class="ps-opt-t">Level up</div><div class="ps-opt-s">Rookie → Hall of Fame</div></div></div>
     </div>
-    <div class="modal-pad">
-      <div class="welcome-reward"><img class="fc-coin" src="" id="welcomeCoin" style="width:34px;height:34px;"><div><div style="font-size:20px;font-weight:900;">+500 FC</div><div class="caption" style="color:var(--ink-3);">Welcome bonus to get you started</div></div></div>
-      <div class="welcome-perks">
-        <div class="wp"><span class="material-icons-round" style="color:var(--purple);">how_to_vote</span><div><div class="pref-name">Vote for players</div><div class="pref-sub">Earn 10 XP per vote</div></div></div>
-        <div class="wp"><span class="material-icons-round" style="color:var(--green);">insights</span><div><div class="pref-name">Forecast outcomes</div><div class="pref-sub">Earn 15 XP &amp; win FC</div></div></div>
-        <div class="wp"><span class="material-icons-round" style="color:var(--live);">local_fire_department</span><div><div class="pref-name">Daily streak</div><div class="pref-sub">Up to 500 FC every 7 days</div></div></div>
-        <div class="wp"><span class="material-icons-round" style="color:var(--gold);">military_tech</span><div><div class="pref-name">Level up</div><div class="pref-sub">Rookie → Hall of Fame</div></div></div>
-      </div>
-      <button class="btn btn-primary btn-block" style="margin-top:18px;" onclick="claimWelcome()">Claim 500 FC &amp; Start</button>
-    </div>
+    <button class="ps-btn" onclick="claimWelcome()">Claim 500 FC &amp; Start</button>
+   </div>
   </div>
 </div>
 
@@ -990,24 +987,22 @@
 
 
 <!-- ═══ CUSTOMIZATION PROMO ═══ -->
-<div class="modal-backdrop" id="custPromoModal" onclick="backdropClose(event,'custPromoModal')">
-  <div class="modal" role="dialog" aria-modal="true">
-    <button class="modal-close" onclick="closeModal('custPromoModal')"><span class="material-icons-round">close</span></button>
-    <div class="premium-modal-head" style="background:linear-gradient(135deg,#1B0080,#4000FF 55%,#6640FF);border-radius:24px 24px 0 0;padding:30px 24px 26px;color:#fff;position:relative;overflow:hidden;">
-      <div class="prem-deco"><i style="top:-26px;right:-26px;width:92px;height:92px;background:var(--teal);border-radius:0 0 0 100%;"></i><i style="top:-10px;right:54px;width:48px;height:48px;background:var(--pink);border-radius:50%;"></i></div>
-      <div style="position:relative;"><span class="lbl" style="color:var(--teal);">New in the Store</span>
-      <h2 class="h2" style="color:#fff;text-transform:uppercase;margin-top:6px;">Profile Customization</h2>
-      <p class="small" style="color:rgba(255,255,255,.78);margin-top:6px;">Deck out your profile with WC26 national-team themes.</p></div>
+<div class="modal-backdrop ps-backdrop" id="custPromoModal" onclick="backdropClose(event,'custPromoModal')">
+  <div class="ps-sheet" role="dialog" aria-modal="true" aria-label="Profile Customization">
+   <div class="ps-inner">
+    <button class="ps-close" onclick="closeModal('custPromoModal')" aria-label="Close"><span class="material-icons-round">close</span></button>
+    <span class="ps-tag">New in the Store</span>
+    <h2 class="ps-title">Profile Customization</h2>
+    <p class="ps-sub">Deck out your profile with WC26 national-team themes.</p>
+    <div class="ps-divider"></div>
+    <div class="ps-opts">
+      <div class="ps-opt"><span class="ps-ic"><span class="material-icons-round">face</span></span><div class="ps-opt-txt"><div class="ps-opt-t">Avatars</div><div class="ps-opt-s">Static &amp; animated</div></div></div>
+      <div class="ps-opt"><span class="ps-ic"><span class="material-icons-round">auto_awesome</span></span><div class="ps-opt-txt"><div class="ps-opt-t">Decorations</div><div class="ps-opt-s">Animated avatar rings</div></div></div>
+      <div class="ps-opt"><span class="ps-ic"><span class="material-icons-round">badge</span></span><div class="ps-opt-txt"><div class="ps-opt-t">Name Plates</div><div class="ps-opt-s">Team-coloured</div></div></div>
+      <div class="ps-opt"><span class="ps-ic"><span class="material-icons-round">panorama</span></span><div class="ps-opt-txt"><div class="ps-opt-t">Banners</div><div class="ps-opt-s">Profile headers</div></div></div>
     </div>
-    <div class="modal-pad">
-      <div class="welcome-perks">
-        <div class="wp"><span class="material-icons-round" style="color:var(--purple);">face</span><div><div class="pref-name">Avatars</div><div class="pref-sub">Static &amp; animated</div></div></div>
-        <div class="wp"><span class="material-icons-round" style="color:var(--teal);">auto_awesome</span><div><div class="pref-name">Decorations</div><div class="pref-sub">Animated avatar rings</div></div></div>
-        <div class="wp"><span class="material-icons-round" style="color:var(--gold);">badge</span><div><div class="pref-name">Name Plates</div><div class="pref-sub">Team-coloured</div></div></div>
-        <div class="wp"><span class="material-icons-round" style="color:var(--pink);">panorama</span><div><div class="pref-name">Banners</div><div class="pref-sub">Profile headers</div></div></div>
-      </div>
-      <button class="btn btn-primary btn-block" style="margin-top:18px;" onclick="closeModal('custPromoModal');go('store');setStoreTab('custom')">Browse the Collection</button>
-    </div>
+    <button class="ps-btn" onclick="closeModal('custPromoModal');go('store');setStoreTab('custom')">Browse the Collection</button>
+   </div>
   </div>
 </div>
 

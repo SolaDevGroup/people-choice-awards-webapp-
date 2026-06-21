@@ -20,7 +20,7 @@ const CUST_CATS=[
   {key:'nameplate',slot:'nameplate',cat:'nameplates',label:'Name Plate',price:750,anim:false,rar:'Rare'},
   {key:'banner',slot:'banner',cat:'banners',label:'Banner',price:1500,anim:false,rar:'Epic'}
 ];
-const RARITY={Common:'#73737D',Rare:'#3D6BFF',Epic:'#A855F7',Legendary:'#FFB600'};
+const RARITY={Common:'#73737D',Rare:'#7743F2',Epic:'#A855F7',Legendary:'#FFB600'};
 let custItems=[];
 (function buildCust(){
   const mk=(themeName,colors,team)=>CUST_CATS.forEach(c=>{
@@ -83,19 +83,24 @@ function custCardHTML(item){
   const owned=state.ownedCust.has(item.id);
   const equipped=state.equipped[item.slot]===item.id;
   const rc=RARITY[item.rar];
-  let btn;
-  if(equipped)btn=`<button class="merch-buy equipped" onclick="custEquip('${item.id}')">Equipped ✓</button>`;
-  else if(owned)btn=`<button class="merch-buy own" onclick="custEquip('${item.id}')">Equip</button>`;
-  else btn=`<button class="merch-buy" onclick="custBuy('${item.id}')">Buy</button>`;
-  const flag=item.team!=='WC26'?flagImg(item.team,16):'';
-  return `<div class="merch-card cust-card ${equipped?'is-equipped':''}">
-    <div class="cust-rar" style="color:${rc};border-color:${rc};">${item.rar}</div>
-    <div class="cust-preview">${item.anim?'<span class="cust-animtag">●&nbsp;Animated</span>':''}${custPreview(item)}</div>
-    <div class="merch-body">
-      <div class="merch-name">${item.themeName}</div>
-      <div class="merch-team">${flag||'✦'} ${item.team==='WC26'?'WC26 Special':item.team} · ${item.slot.charAt(0).toUpperCase()+item.slot.slice(1)}</div>
-      <div class="merch-foot"><div class="merch-price">${fcCoin}${fmt(item.price)}</div>${btn}</div>
-    </div></div>`;
+  // Figma: no Buy button — the whole card is the tap target (buy, or equip if owned)
+  const action=owned?`custEquip('${item.id}')`:`custBuy('${item.id}')`;
+  const rarStyle=item.rar==='Common'?'':`background:${rc};`; // Common = translucent white; rest = solid rarity colour
+  const status=equipped?'<span class="cust-state on">Equipped ✓</span>':owned?'<span class="cust-state">Owned</span>':'';
+  return `<button class="cust-card2 ${equipped?'is-equipped':''}" onclick="${action}">
+    <div class="cust-img">
+      <div class="cust-badges">
+        <span class="cust-rar2" style="${rarStyle}">${item.rar}</span>
+        ${item.anim?'<span class="cust-animtag2">Animated</span>':''}
+      </div>
+      <div class="cust-art">${custPreview(item)}</div>
+    </div>
+    <div class="cust-meta">
+      <div class="cust-nm">${item.themeName}</div>
+      <div class="cust-sub">${item.slot.charAt(0).toUpperCase()+item.slot.slice(1)}</div>
+      <div class="cust-price">${fcCoin}<span class="cust-amt">${fmt(Math.round(item.price*0.8))}</span><span class="cust-orig">$${fmt(item.price)}</span><span class="cust-fcu">FC</span>${status}</div>
+    </div>
+  </button>`;
 }
 async function custBuy(id){
   if(!requireAuth('Sign in to unlock profile items'))return;

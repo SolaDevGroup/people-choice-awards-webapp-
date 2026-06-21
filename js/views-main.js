@@ -676,7 +676,7 @@ function mkCount(n){return n>=1000?'+'+(n/1000).toFixed(1).replace(/\.0$/,'')+'k
 function mkInitials(name){const n=(name||'').trim()||'?';return ((n.match(/[A-Za-z0-9]+/g)||[n]).map(w=>w[0]).join('').slice(0,2)||'?').toUpperCase();}
 // one predictor avatar — their photo, else name-initials (sidebar style)
 function mkAvatar(p){return p.photo?`<span class="mk-pa" style="background-image:url('${String(p.photo).replace(/'/g,'')}')"></span>`:`<span class="mk-pa" title="${(p.name||'').replace(/"/g,'')}">${mkInitials(p.name)}</span>`;}
-function mkOption(m,o,pct,active){
+function mkOption(m,o,pct,active,idx){
   const isYN=m.kind==='yn';
   const player=o.pid?players.find(x=>x.dbId===o.pid||x.id===o.pid):null;
   const av=isYN?'':(player&&player.photo?`<img class="mk-av" src="${player.photo}" alt="">`:(player?`<span class="mk-av mk-av-i">${player.short||''}</span>`:''));
@@ -698,8 +698,8 @@ function mkOption(m,o,pct,active){
   } else if(sup>0){
     voters=`<span class="mk-voters"><span class="mk-count">${mkCount(sup)}</span></span>`;
   }
-  return `<button class="mk-opt ${active?'active':'inactive'}" onclick="openMarketPred('${m.id}')">
-    <span class="mk-fill">${av}${nm}${voters}</span>
+  return `<button class="mk-opt ${active?'active':'inactive'}" onclick="openMarketPred('${m.id}','${idx===1?'b':'a'}')">
+    <span class="mk-fill" style="--fill:${pct}%">${av}${nm}${voters}</span>
     <span class="mk-pct">${pct}%</span>
   </button>`;
 }
@@ -713,12 +713,12 @@ function marketCardHTML(m){
       <span class="market-closes"><span class="material-icons-outlined">schedule</span>Closes ${m.closes}</span></div>
     <div class="market-title">${m.title}</div>
     <div class="market-pool">Pool: <strong>${fmt(m.pool)} FC</strong></div>
-    <div class="mk-opts">${m.options.map((o,i)=>mkOption(m,o,pc[i],pn===o.n)).join('')}</div>
+    <div class="mk-opts">${m.options.map((o,i)=>mkOption(m,o,pc[i],pn===o.n,i)).join('')}</div>
   </div>`;
 }
-function openMarketPred(mid){
+function openMarketPred(mid,side){
   const m=markets.find(x=>x.id===mid);
-  openPredModal(m.id,m.title,marketPcts(m)[0],m.options[0].n,m.options[1].n,m);
+  openPredModal(m.id,m.title,marketPcts(m)[0],m.options[0].n,m.options[1].n,m,null,side);
 }
 // Lazily-created per-team / per-player question markets (tq_/pq_/mq_) live only in the
 // team/player modals — keep them out of the main Predictions grid.
@@ -784,16 +784,20 @@ function teamPreds(C){
   return qs.map((q,i)=>({id:C+'_'+i,q,yes:50,slug:'tq_'+slugify(C)+'_'+i,category:'country',labelA:'Yes',labelB:'No'}));
 }
 let curPred=null;
-function openPredModal(id,q,aPct,aLabel,bLabel,market,lazy){
+function openPredModal(id,q,aPct,aLabel,bLabel,market,lazy,side){
   if(!requireAuth('Sign in to forecast'))return;
   aLabel=aLabel||'Yes';bLabel=bLabel||'No';
-  curPred={id,q,aPct,aLabel,bLabel,side:'a',market:market||null,lazy:lazy||null};
+  side=(side==='b')?'b':'a'; // preselect the option the user actually clicked
+  curPred={id,q,aPct,aLabel,bLabel,side,market:market||null,lazy:lazy||null};
   document.getElementById('predQ').textContent=q;
   document.getElementById('sideYesLbl').textContent=aLabel;
   document.getElementById('sideNoLbl').textContent=bLabel;
   document.getElementById('predYesPct').textContent=aPct+'%';
   document.getElementById('predNoPct').textContent=(100-aPct)+'%';
-  selectSide('a');
+  // Yes/No markets keep the green/red semantics; name-vs-name markets go neutral (no good/bad side)
+  const isYN=(aLabel==='Yes'&&bLabel==='No');
+  document.getElementById('predSideRow').classList.toggle('names',!isYN);
+  selectSide(side);
   // Stake is selectable up to 1,000 (or the user's balance if higher); balance is enforced
   // at "Place Forecast", not on the slider. Defaults to the 50 FC minimum.
   const sl=document.getElementById('predSlider');sl.min=50;sl.step=50;sl.max=Math.max(1000,state.balance);sl.value=50;
@@ -899,8 +903,8 @@ function playerQCardHTML(q){
   const yes=q.yes||50, no=100-yes;
   const pick=(state.predictions||[]).find(x=>x.market===q.q); const pn=pick&&pick.pick; // active = user's pick
   const closes=(typeof VOTING_CLOSES!=='undefined')?VOTING_CLOSES.toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'}):'Jul 19';
-  const bar=(label,pct,active)=>`<button class="mk-opt ${active?'active':'inactive'}" onclick="openQuestionPred('${q.id}')">
-      <span class="mk-fill"><img class="mk-yn-img" src="assets/${label.toLowerCase()}_${active?'active':'inactive'}.svg" alt="${label}"></span>
+  const bar=(label,pct,active)=>`<button class="mk-opt ${active?'active':'inactive'}" onclick="openQuestionPred('${q.id}','${label==='No'?'b':'a'}')">
+      <span class="mk-fill" style="--fill:${pct}%"><img class="mk-yn-img" src="assets/${label.toLowerCase()}_${active?'active':'inactive'}.svg" alt="${label}"></span>
       <span class="mk-pct">${pct}%</span>
     </button>`;
   return `<div class="card market-card">
@@ -912,10 +916,10 @@ function playerQCardHTML(q){
   </div>`;
 }
 function playerQListHTML(arr){return arr.map(playerQCardHTML).join('');}
-function openQuestionPred(id){
+function openQuestionPred(id,side){
   const q=_questionMap[id]; if(!q)return;
   closeModal('teamPredModal'); // hide the question list so the forecast modal is on top
-  openPredModal(q.id,q.q,q.yes,q.labelA||'Yes',q.labelB||'No',null,q); // q = lazy-market descriptor
+  openPredModal(q.id,q.q,q.yes,q.labelA||'Yes',q.labelB||'No',null,q,side); // q = lazy-market descriptor
 }
 // Fill real odds for any questions whose market already exists (default stays 50/50).
 async function loadQuestionPcts(questions,rerender){

@@ -34,20 +34,20 @@ function renderStoreChips(){
 function setStoreFilter(f){state.storeFilter=f;renderStoreChips();renderMerch();}
 function renderMerch(){
   const list=merch.filter(m=>state.storeFilter==='all'||m.team===state.storeFilter);
-  merchGrid.innerHTML=list.map(m=>{const fi=flagImg(m.team,18);const owned=state.owned.has(m.id);return `
-  <div class="merch-card">
-    <div class="merch-img" style="background:linear-gradient(160deg,var(--grey-bg),#ECEAF4);">
-      <span class="merch-flag">${fi||''}</span><span class="merch-emoji">${m.emoji}</span>
+  // Same card design as the customization cards: dark gradient image, name/team/price, tap-to-buy.
+  merchGrid.innerHTML=list.map(m=>{const fi=flagImg(m.team,16);const owned=state.owned.has(m.id);
+    const status=owned?'<span class="cust-state on">Owned ✓</span>':'';
+    return `<button class="cust-card2" onclick="buyMerch('${m.id}')">
+    <div class="cust-img">
+      <div class="cust-badges">${fi?`<span class="merch-flag-chip">${fi}</span>`:'<span></span>'}</div>
+      <div class="cust-art"><span class="merch-emoji">${m.emoji}</span></div>
     </div>
-    <div class="merch-body">
-      <div class="merch-name">${m.name}</div>
-      <div class="merch-team">${m.team}</div>
-      <div class="merch-foot">
-        <div class="merch-price">${fcCoin}${fmt(m.fc)}</div>
-        <button class="merch-buy ${owned?'owned':''}" onclick="buyMerch('${m.id}')">${owned?'Owned':'Buy'}</button>
-      </div>
+    <div class="cust-meta">
+      <div class="cust-nm">${m.name}</div>
+      <div class="cust-sub">${m.team}</div>
+      <div class="cust-price">${fcCoin}<span class="cust-amt">${fmt(Math.round(m.fc*0.8))}</span><span class="cust-orig">$${fmt(m.fc)}</span><span class="cust-fcu">FC</span>${status}</div>
     </div>
-  </div>`;}).join('');
+  </button>`;}).join('');
 }
 function buyMerch(id){
   if(!requireAuth('Sign in to shop merch'))return;
