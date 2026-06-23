@@ -681,7 +681,7 @@ input,select{font-family:inherit}
 .fc-hero-coin{margin-top:34px}
 .fc-hero-coin img{width:132px;height:132px;filter:drop-shadow(0 14px 30px rgba(255,182,0,.3))}
 .fc-right{justify-content:flex-start}
-.fc-packs{display:flex;flex-direction:column;gap:12px;margin-bottom:20px}
+.fc-packs{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
 .fc-pack{box-sizing:border-box;display:flex;flex-direction:column;align-items:stretch;gap:4px;width:100%;min-height:123px;text-align:left;background:rgba(18,18,18,.64);border:2px solid rgba(255,255,255,.16);border-radius:28px;padding:24px;cursor:pointer;color:#fff;transition:var(--t1);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
 .fc-pack:hover{background:rgba(28,28,30,.7)}
 .fc-pack.selected{border-color:#fff} /* selected = white 100% stroke */
@@ -699,7 +699,33 @@ input,select{font-family:inherit}
 /* credits modal bg = the Figma wavy-stripe image with an 80% #080808 fill on top; no black card behind */
 #creditsModal.vp-backdrop{background:linear-gradient(rgba(8,8,8,.8),rgba(8,8,8,.8)),url('../assets/credits-bg.svg') center center/cover no-repeat}
 #creditsModal .vp-card{background:transparent;box-shadow:none}
-#creditsModal .vp-top-sub{margin-top:1px} /* tighter gap under the header title */
+#creditsModal .vp-right{border-top:none} /* no divider line below the header */
+#creditsModal .vp-top-sub{font-family:'Poppins';font-weight:400;font-size:14px;color:rgba(255,255,255,.64);margin-top:0}
+/* ── Get Fan Credits: bottom payment bar (Figma) ── */
+.fc-paybar{display:flex;flex-direction:column;align-items:center;gap:8px}
+.fc-paybar .vp-pay{margin-bottom:0}
+.fc-paybar .vp-pay.card{background:rgba(255,255,255,.04);border-radius:100px;height:48px;letter-spacing:-.08em;text-transform:capitalize}
+.fc-paybar .vp-secure{margin-top:0;font-size:12px;font-weight:400}
+.fc-paybar .vp-secure .material-icons-round{font-size:14px}
+.fc-paybar .vp-legal{margin-top:0;display:flex;align-items:center;justify-content:center;gap:6px;font-size:10px}
+.vp-legal-dot{width:3px;height:3px;border-radius:100px;background:rgba(255,255,255,.16);flex:none}
+/* mobile: full-screen modal — fixed full-width header, packs scroll BEHIND a frosted bar (the
+   bar's backdrop-filter blurs the packs that pass under it → the Figma show-through effect) */
+@media(max-width:760px){
+  #creditsModal.vp-backdrop.open{display:flex;flex-direction:column;align-items:stretch;overflow:hidden;height:100vh;height:100dvh}
+  /* iOS-style header: absolute overlay; packs scroll UNDER it; progressive (masked) backdrop blur */
+  #creditsModal .vp-top{position:absolute;top:0;left:0;right:0;z-index:3;padding:max(24px,env(safe-area-inset-top)) 12px 8px}
+  #creditsModal .vp-top::before{content:'';position:absolute;inset:0;bottom:-24px;z-index:-1;pointer-events:none;
+    -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+    -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 56%,transparent 100%);
+    mask-image:linear-gradient(to bottom,#000 0%,#000 56%,transparent 100%)}
+  #creditsModal .vp-card{flex:1 1 auto;min-height:0;width:100%;display:flex;overflow:hidden;border-radius:0;box-shadow:none}
+  #creditsModal .fc-right{position:relative;display:flex;flex-direction:column;min-height:0;width:100%;height:100%;border-top:none;padding-left:12px;padding-right:12px;padding-top:0;padding-bottom:0}
+  #creditsModal .fc-packs{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin-bottom:0;padding-top:78px;padding-bottom:150px}
+  #creditsModal .fc-packs::-webkit-scrollbar{display:none}
+  #creditsModal .fc-paybar{position:absolute;left:0;right:0;bottom:0;margin:0;padding:12px 12px calc(20px + env(safe-area-inset-bottom));
+    background:rgba(18,18,18,.88);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-radius:32px 32px 0 0}
+}
 
 /* vote modal */
 .alloc-num{font-family:var(--font-display);font-size:46px;font-weight:700;letter-spacing:-1px;color:var(--purple);font-variant-numeric:tabular-nums}

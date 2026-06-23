@@ -34,7 +34,7 @@ let custItems=[];
 // Signed-out baseline: own/equip nothing. Real ownership loads from Supabase on sign-in.
 state.ownedCust=new Set();
 state.equipped={avatar:null,decoration:null,nameplate:null,banner:null};
-state.stab='merch';state.custCat='avatars';state.custTeam='all';
+state.stab='custom';state.custCat='avatars';state.custTeam='all';
 
 /* ---- visual builders (CSS-driven, no images) ---- */
 function gradFromColors(c){return `linear-gradient(135deg,${c[0]},${c[1]} 70%,${c[2]||c[0]})`;}

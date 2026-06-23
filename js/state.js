@@ -1,5 +1,5 @@
 /* ════════ STATE ════════ */
-const state={balance:2450,votesToday:0,totalVotes:128,pos:'all',mtab:'all',ltab:'players',nf:'all',
+const state={balance:(()=>{try{return Math.max(0,parseInt(localStorage.getItem('wc26_balance'),10))||0;}catch(e){return 0;}})(),votesToday:0,totalVotes:128,pos:'all',mtab:'all',ltab:'players',nf:'all',
  favs:new Set((()=>{try{return JSON.parse(localStorage.getItem('wc26_favs'))||[];}catch(e){return[];}})()),votingFor:null,backTo:'vote',
  myVotes:[{player:'Kylian Mbappé',short:'KM',fc:850,date:'May 16, 2026'},{player:'Jude Bellingham',short:'JB',fc:370,date:'May 16, 2026'},{player:'Vinícius Jr',short:'VJ',fc:210,date:'May 13, 2026'}],
  xp:2410,streak:6,dailyClaimed:false,unread:3,upStreak:{},user:null,profile:null,

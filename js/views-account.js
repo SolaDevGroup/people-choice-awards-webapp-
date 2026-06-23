@@ -98,5 +98,7 @@ function syncBalance(){
   statBalance.textContent=fmt(state.balance);
   const sb=document.getElementById('storeBalance');if(sb)sb.textContent=fmt(state.balance);
   ['sbBalance','hdrBalance','mBalance'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent=fmt(state.balance);});
+  // Cache the real balance so the next reload shows it instantly (no flash to a placeholder).
+  try{localStorage.setItem('wc26_balance',String(state.balance||0));}catch(e){}
 }
 
