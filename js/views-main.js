@@ -99,17 +99,15 @@ function prowHTML(p,rank){
 }
 function setPos(pos){state.pos=pos;document.querySelectorAll('#posChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.pos===pos));renderVoteList();}
 function fillDropdowns(){
-  // filter(Boolean): players whose club hasn't been imported yet have club='' — skip those
-  const cs=[...new Set(players.map(p=>p.country).filter(Boolean))].sort(),cl=[...new Set(players.map(p=>p.club).filter(Boolean))].sort();
+  const cs=[...new Set(players.map(p=>p.country).filter(Boolean))].sort();
   ddCountry.innerHTML='<option value="">Country</option>'+cs.map(c=>`<option>${c}</option>`).join('');
-  ddClub.innerHTML='<option value="">Club</option>'+cl.map(c=>`<option>${c}</option>`).join('');
 }
 function renderVoteList(){
   const q=(playerSearch.value||'').toLowerCase().trim();
-  const co=ddCountry.value,cb=ddClub.value,so=ddSort.value;
+  const co=ddCountry.value,so=ddSort.value;
   let list=players.filter(p=>
-    (state.pos==='all'||p.pos===state.pos)&&(!co||p.country===co)&&(!cb||p.club===cb)&&
-    (!q||p.name.toLowerCase().includes(q)||p.country.toLowerCase().includes(q)||p.club.toLowerCase().includes(q)));
+    (state.pos==='all'||p.pos===state.pos)&&(!co||p.country===co)&&
+    (!q||p.name.toLowerCase().includes(q)||p.country.toLowerCase().includes(q)));
   if(so==='trend')list=[...list].sort((a,b)=>b.trend-a.trend);
   else if(so==='name')list=[...list].sort((a,b)=>a.name.localeCompare(b.name));
   else list=[...list].sort(rankCmp);
@@ -1114,7 +1112,7 @@ function lbRowHTML(p,rank){
   ].join('');
   const t = Number(p.trend)||0;
   const rankEl = rank<=4
-    ? `<span class="lb-rank lb-rank-badge"><img src="assets/leader${rank}.svg?v=20260627e" alt="${rank}"></span>`
+    ? `<span class="lb-rank lb-rank-badge"><img src="assets/leader${rank}.png?v=20260627j" alt="${rank}"></span>`
     : `<span class="lb-rank">${rank}</span>`;
   return `<div class="lb-row${medal}" onclick="openPlayer('${p.id}','leaderboard')">
     ${rankEl}
@@ -1127,7 +1125,7 @@ function lbRowHTML(p,rank){
   </div>`;
 }
 function renderLeaderboard(){
-  const lg=document.getElementById('lbLogo');if(lg&&!lg.getAttribute('src'))lg.src='assets/word_logo.svg?v=20260627e';
+  const lg=document.getElementById('lbLogo');if(lg&&!lg.getAttribute('src'))lg.src='assets/word_logo.svg?v=20260627j';
   if(state.ltab==='players'){
     lbList.innerHTML=players.slice(0,25).map((p,i)=>lbRowHTML(p,i+1)).join('');
   }else if(state.ltab==='fans'){

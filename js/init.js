@@ -25,7 +25,7 @@ if(typeof renderStoreTicker==='function')renderStoreTicker(); // seed the Fan St
  var onScroll=function(){document.body.classList.toggle('hdr-scrolled',(window.scrollY||document.documentElement.scrollTop||0)>8);};
  window.addEventListener('scroll',onScroll,{passive:true});
  window.scrollTo(0,0);onScroll();})();
-loadCatalog(); // replace seed data with live Supabase catalog, then re-render
+loadCatalog().then(()=>{ if(typeof enhanceStarPhotos==='function')enhanceStarPhotos(); }); // live catalog, then upgrade star photos to HD
 setInterval(refreshOdds,20000); // real odds refresh (no fake simulation)
 setInterval(refreshLeaderboard,60000); // real leaderboard rank movement (matches "every 60s")
 setInterval(refreshFixtures,45000); // keep today's games + LIVE badges current

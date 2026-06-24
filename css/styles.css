@@ -252,7 +252,6 @@ input,select{font-family:inherit}
 .lb-view{position:relative}
 /* the dark leaderboard bg must NOT show through the (transparent) global header — keep it solid white */
 body.lb-dark .m-header,body.lb-dark .app-header{background:#fff!important}
-body.lb-dark .hdr-blur{display:none}
 /* the light legal footer + decor bar are invisible on the dark feed — drop them so there's no dead space */
 body.lb-dark .footer,body.lb-dark .decor-bar{display:none}
 /* Figma background graphic (PCA colour bands: olive · navy · teal · maroon). The Figma
@@ -1008,7 +1007,10 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 .store-ticker{position:relative;z-index:6;height:36px;margin-top:4px;display:flex;align-items:center;overflow:hidden;
   background:linear-gradient(rgba(18,18,18,.82),rgba(18,18,18,.82)),var(--decor-img);background-size:cover;background-position:center}
 .st-track{display:flex;align-items:center;gap:16px;padding:4px 12px;white-space:nowrap;flex:none;animation:stScroll 48s linear infinite;will-change:transform}
-@keyframes stScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@keyframes stScroll{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}
+/* keep the schedule marquee scrolling even when the OS "Reduce Motion" setting is on
+   (the global rule near the top sets animation-duration:.01ms on everything, which freezes it) */
+@media(prefers-reduced-motion:reduce){.st-track{animation-duration:48s!important}}
 /* pause the marquee while hovering (real-pointer devices only) or when manually paused */
 @media(hover:hover){.store-ticker:hover .st-track{animation-play-state:paused}}
 .store-ticker.paused .st-track{animation-play-state:paused}

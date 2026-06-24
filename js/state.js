@@ -50,6 +50,48 @@ const STAR_VOTES=[
   ['mac allister',9.5],['hakimi',9.5],['mitoma',9],['van dijk',8.5],['courtois',8],['saliba',8],
   ['emi martí',8],['e. martí',8],['marquinhos',7.5],['alisson',7],['gvardiol',7],['stones',6.5],['pickford',6]
 ];
+// HIGH-RES PHOTOS — the API-Football headshots are only 150×150 (blurry when shown large).
+// For the well-known players (the ones on the podium/featured/detail), pull a sharp portrait
+// from Wikipedia by page title. Keyed by the same name-substrings as STAR_VOTES so matching is
+// consistent. A miss (no title match, or Wikipedia returns nothing) just keeps the 150px photo —
+// so we never risk showing the wrong face.
+const STAR_PHOTOS=[
+  ['messi','Lionel Messi'],['cristiano ronaldo','Cristiano Ronaldo'],['ronaldo','Cristiano Ronaldo'],
+  ['mbappé','Kylian Mbappé'],['mbappe','Kylian Mbappé'],['neymar','Neymar'],['haaland','Erling Haaland'],
+  ['vinícius','Vinícius Júnior'],['vinicius','Vinícius Júnior'],['bellingham','Jude Bellingham'],
+  ['lamine yamal','Lamine Yamal'],['yamal','Lamine Yamal'],['mohamed salah','Mohamed Salah'],
+  ['musiala','Jamal Musiala'],['harry kane','Harry Kane'],['h. kane','Harry Kane'],['pedri','Pedri'],
+  ['bruno fernandes','Bruno Fernandes'],['lautaro','Lautaro Martínez'],['julián álvarez','Julián Álvarez'],['j. álvarez','Julián Álvarez'],
+  ['rafael leão','Rafael Leão'],['leão','Rafael Leão'],['gavi','Gavi (footballer)'],['bukayo saka','Bukayo Saka'],['b. saka','Bukayo Saka'],
+  ['son heung','Son Heung-min'],['de bruyne','Kevin De Bruyne'],['rodrygo','Rodrygo'],['osimhen','Victor Osimhen'],['phil foden','Phil Foden'],['foden','Phil Foden'],
+  ['modric','Luka Modrić'],['rashford','Marcus Rashford'],['pulisic','Christian Pulisic'],['endrick','Endrick'],['wirtz','Florian Wirtz'],['kvaratskhelia','Khvicha Kvaratskhelia'],
+  ['mac allister','Alexis Mac Allister'],['hakimi','Achraf Hakimi'],['mitoma','Kaoru Mitoma'],['van dijk','Virgil van Dijk'],['courtois','Thibaut Courtois'],['saliba','William Saliba'],
+  ['emi martí','Emiliano Martínez'],['e. martí','Emiliano Martínez'],['marquinhos','Marquinhos'],['alisson','Alisson'],['gvardiol','Joško Gvardiol'],['stones','John Stones'],['pickford','Jordan Pickford']
+];
+function starWikiTitle(p){const nm=String(p.name||'').toLowerCase();for(let i=0;i<STAR_PHOTOS.length;i++){if(nm.indexOf(STAR_PHOTOS[i][0])>=0)return STAR_PHOTOS[i][1];}return null;}
+const _wikiThumbCache={};
+async function fetchWikiThumb(title,size){
+  if(title in _wikiThumbCache)return _wikiThumbCache[title];
+  try{const r=await fetch('https://en.wikipedia.org/w/api.php?action=query&titles='+encodeURIComponent(title)+'&prop=pageimages&piprop=thumbnail&pithumbsize='+size+'&format=json&origin=*');
+    const j=await r.json();const pg=Object.values(j.query.pages)[0];
+    const url=(pg&&pg.thumbnail&&pg.thumbnail.source)||null;_wikiThumbCache[title]=url;return url;
+  }catch(e){_wikiThumbCache[title]=null;return null;}
+}
+// Resolve sharp Wikipedia portraits for the star players, then swap them into p.photo (keeping the
+// original 150px as p.photoSd for fallback). One fetch per unique title; re-renders once when done.
+async function enhanceStarPhotos(){
+  if(typeof players==='undefined'||!players)return;
+  const byTitle={};
+  // skip players who already carry an HD portrait (photo_hd from the DB) — no need to re-fetch
+  players.forEach(p=>{const t=starWikiTitle(p);if(t&&!p._hdDone&&!/wikimedia\.org|wikipedia\.org/.test(p.photo||'')){(byTitle[t]=byTitle[t]||[]).push(p);}});
+  const titles=Object.keys(byTitle);if(!titles.length)return;
+  let changed=false;
+  await Promise.all(titles.map(async t=>{
+    const url=await fetchWikiThumb(t,800);
+    byTitle[t].forEach(p=>{p._hdDone=true;if(url){p.photoSd=p.photo;p.photo=url;changed=true;}});
+  }));
+  if(changed&&typeof renderAll==='function')renderAll();
+}
 function playerBaseVotes(p){
   const nm=String(p.name||'').toLowerCase();
   for(let i=0;i<STAR_VOTES.length;i++){ if(nm.indexOf(STAR_VOTES[i][0])>=0) return Math.round(STAR_VOTES[i][1]*1e6); }

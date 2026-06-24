@@ -384,7 +384,7 @@ function mapPlayer(row, rankByPlayer){
     country,
     flag: COUNTRY_FLAG[country] || '',
     club: row.club || '',
-    photo: row.photo_url || '',
+    photo: row.photo_hd || row.photo_url || '',  // prefer the sharp Wikipedia portrait, fall back to API-Football
     base: playerBaseVotes({goals:st.goals||0, assists:st.assists||0, matches:st.matches||0, gpm:Number(st.goals_per_match||0), id:row.slug||row.id, name:row.name}),
     realVotes: Number(rank.total_fc || 0),
     get votes(){ return (Number(this.base)||0) + (Number(this.realVotes)||0); }, // base + real (each vote +1)

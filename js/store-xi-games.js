@@ -207,6 +207,10 @@ function renderStoreTicker(){
     `<span class="st-dot"></span><span class="st-date">${stShortDate(g.iso)}</span>`
   ).join('');
   tr.innerHTML=set+set; // duplicate the set so the marquee loops seamlessly
+  // Safari computes translateX(-50%) against the track's width at the moment the animation
+  // STARTED — which was at page load while #stTrack was still empty (width 0 → -50% = 0px),
+  // so it stays frozen. Restart the animation now that real content gives the track a width.
+  tr.style.animation='none'; void tr.offsetWidth; /* force reflow */ tr.style.animation='';
   const st=document.getElementById('storeTicker');if(st)st.classList.toggle('paused',_stPaused);
 }
 function toggleStoreTicker(){
