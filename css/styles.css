@@ -245,6 +245,63 @@ input,select{font-family:inherit}
 
 /* ── FLAT LIST ROWS (divider style per mockup) ── */
 .flat-list{border-top:1px solid var(--border)}
+
+/* ════════ LEADERBOARD REDESIGN (Figma): dark, frosted-card list ════════ */
+.lb-view{position:relative}
+/* the dark leaderboard bg must NOT show through the (transparent) global header — keep it solid white */
+body.lb-dark .m-header,body.lb-dark .app-header{background:#fff!important}
+body.lb-dark .hdr-blur{display:none}
+/* the light legal footer + decor bar are invisible on the dark feed — drop them so there's no dead space */
+body.lb-dark .footer,body.lb-dark .decor-bar{display:none}
+/* Figma background graphic (PCA colour bands: olive · navy · teal · maroon). The Figma
+   layers a rgba(18,18,18,.8) overlay over the bright art; our SVG is already that dark
+   result, so we use it directly with cover. */
+.lb-bg{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:url('../assets/lb-bg.svg?v=20260626s') center center/cover no-repeat,#0d1432}
+.lb-inner{position:relative;z-index:1}
+.lb-hero{display:flex;align-items:center;gap:10px;padding:8px 0 2px}
+.lb-hero-logo{width:auto;height:54px;object-fit:contain;flex:none}
+.lb-hero-txt{display:flex;flex-direction:column;gap:2px;min-width:0}
+.lb-hero-kicker{font-family:var(--font-display);font-weight:700;font-size:14px;letter-spacing:-.02em;text-transform:uppercase;color:#fff;line-height:1}
+.lb-hero-year{font-family:var(--font-display);font-weight:700;font-size:32px;letter-spacing:-.02em;text-transform:uppercase;color:#fff;line-height:1}
+.lb-hero-timer{font-family:'Poppins';font-weight:600;font-size:14px;letter-spacing:-.02em;color:rgba(255,255,255,.64);line-height:1}
+/* tabs on the dark theme */
+.lb-tabs{margin-top:18px;background:rgba(255,255,255,.10)}
+.lb-tabs .tab-btn{color:rgba(255,255,255,.72)}
+.lb-tabs .tab-btn.active{background:#fff;color:#121212}
+.lb-list{display:flex;flex-direction:column;gap:4px;margin-top:18px;padding-bottom:24px}
+.lb-row{display:flex;align-items:center;gap:12px;padding:8px 12px;min-height:60px;border-radius:16px;cursor:pointer;position:relative;
+  background:rgba(255,255,255,.10);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);transition:background var(--t1)}
+.lb-row:hover{background:rgba(255,255,255,.16)}
+.lb-me{background:rgba(67,49,244,.22)}
+.lb-rank{flex:none;width:24px;text-align:center;font-family:var(--font-display);font-weight:700;font-size:24px;color:#fff;line-height:1}
+.lb-rank-badge{width:24px;display:flex;align-items:center;justify-content:center}
+.lb-rank-badge img{height:24px;width:auto;display:block}
+/* top-3 medal rows: 4px linear-gradient stroke (Figma) drawn as a masked gradient ring (CSS borders can't be gradients) */
+.lb-r1::after,.lb-r2::after,.lb-r3::after{content:'';position:absolute;inset:0;border-radius:16px;padding:4px;pointer-events:none;
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude}
+.lb-r1::after{background:linear-gradient(190deg,#452300 10%,#D08810 90%)} .lb-r1 .lb-rank{color:#FFC83A}
+.lb-r2::after{background:linear-gradient(190deg,rgba(219,232,248,.64) 10%,#DADADA 90%)} .lb-r2 .lb-rank{color:#D6DBE4}
+.lb-r3::after{background:linear-gradient(190deg,#452300 10%,#703B05 90%)} .lb-r3 .lb-rank{color:#E59A5B}
+.lb-av{flex:none;width:44px;height:44px;border-radius:50%;overflow:hidden;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center}
+.lb-av img{width:100%;height:100%;object-fit:cover;object-position:center top}
+.lb-av-i{font-family:var(--font-display);font-weight:700;font-size:15px;color:#fff}
+.lb-body{flex:1 1 auto;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.lb-name-col{min-width:0;display:flex;flex-direction:column;gap:6px}
+.lb-name{font-family:'Poppins';font-weight:500;font-size:14px;color:#fff;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lb-meta{display:flex;align-items:center;gap:4px;font-family:'Poppins';font-weight:500;font-size:12px;letter-spacing:-.01em;color:rgba(255,255,255,.64);line-height:1}
+.lb-meta .flag-img{height:12px!important;width:auto;border-radius:2.4px;box-shadow:0 1.2px 1.2px rgba(18,18,18,.25)}
+.lb-meta .lb-num{font-weight:400}
+.lb-dot{width:3px;height:3px;border-radius:50%;background:rgba(255,255,255,.64);flex:none}
+.lb-you{font-size:9px;font-weight:800;color:#fff;background:var(--purple);padding:1px 4px;border-radius:4px;margin-left:4px}
+.lb-stat{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.lb-votes{font-family:var(--font-display);font-weight:700;font-size:14px;color:#fff;line-height:1}
+.lb-trend{font-family:var(--font-display);font-weight:600;font-size:12px;line-height:1}
+.lb-trend.up{color:#37B874} .lb-trend.down{color:var(--pink)}
+.lb-heart{flex:none;width:24px;height:24px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.lb-heart .material-icons-round{font-size:22px;color:rgba(255,255,255,.64);transition:var(--t1)}
+.lb-heart.on .material-icons-round{color:var(--pink)}
 .prow{display:flex;align-items:center;gap:12px;padding:13px 2px;border-bottom:1px solid var(--border);cursor:pointer;transition:var(--t1)}
 .prow:hover{background:var(--grey-bg)}
 .p-rank{width:20px;text-align:center;font-size:13px;font-weight:700;color:var(--ink-3);flex-shrink:0;font-variant-numeric:tabular-nums}
@@ -553,12 +610,16 @@ body.player-full #playerDetail{padding-bottom:104px}
 /* ── Prediction market options — stacked bars (Figma) ── */
 .mk-opts{display:flex;flex-direction:column;gap:8px;margin-top:14px}
 .mk-opt{box-sizing:border-box;position:relative;display:flex;align-items:center;justify-content:space-between;gap:4px;width:100%;height:44px;padding:0;border:1.5px solid rgba(18,18,18,.08);cursor:pointer;background:rgba(18,18,18,.04);border-radius:12px;overflow:hidden;text-align:left}
-.mk-opt.active{border:none;background:#00040A;padding:3px;gap:0} /* navy frame via padding on the OUTER edge only; fill + % box meet flush in the middle */
+.mk-opt.active{border:none;background:#1C1668;padding:3px;gap:0} /* indigo frame via padding on the OUTER edge only; fill + % box meet flush in the middle */
 .mk-fill{display:flex;align-items:center;gap:6px;height:100%;padding:0 12px;min-width:0;flex:0 1 auto;border-radius:12px 0 0 12px}
-.mk-opt.active .mk-fill{flex:1 1 auto;margin:0;border-radius:9px 0 0 9px;background:linear-gradient(180deg,rgba(0,4,10,.48) 0%,rgba(67,49,244,.48) 100%),#4331F4}
-/* inactive bar fill width is proportional to the % (min-width keeps the label readable at low %).
-   border-radius:0 → the fill sits flush into the bar's rounded corners (clipped by overflow:hidden), no gap. */
-.mk-opt.inactive .mk-fill{flex:0 0 auto;width:var(--fill,auto);min-width:max-content;border-radius:0;background:rgba(18,18,18,.14)}
+/* active fill is proportional to its % (was flex:1 1 auto → always full, ignoring --fill).
+   The white % box grows to fill the rest, so fill + box meet flush — same look as before, no dark gap. */
+.mk-opt.active .mk-fill{flex:0 1 auto;width:var(--fill,auto);min-width:max-content;margin:0;border-radius:9px 0 0 9px;background:linear-gradient(180deg,rgba(0,4,10,.48) 0%,rgba(67,49,244,.48) 100%),#4331F4}
+/* inactive fill is a TRUE proportional bar = exactly var(--fill) wide (no max-content floor, which
+   made 14/18/22/33% all collapse to the label width and look identical). The label overflows the
+   fill (overflow:visible) and stays readable on the light track behind it. */
+.mk-opt.inactive .mk-fill{flex:0 0 auto;width:var(--fill,auto);min-width:0;overflow:visible;border-radius:0;background:rgba(18,18,18,.14)}
+.mk-opt.inactive .mk-name{flex:0 0 auto;overflow:visible;text-overflow:clip}
 .mk-opt.inactive .mk-pct{position:absolute;right:0;top:0;height:100%}
 .mk-av{width:20px;height:20px;border-radius:50%;object-fit:cover;flex:0 0 auto;background:#fff}
 .mk-av-i{display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#121212}
@@ -583,7 +644,7 @@ body.player-full #playerDetail{padding-bottom:104px}
 .mk-opt.sm .mk-pct{font-size:18px}
 .mk-opt.sm .mk-pa{width:14px;height:14px;font-size:6px;margin-left:-3px}
 .mk-opt.sm .mk-count{font-size:12px}
-.mk-opt.active .mk-pct{background:#fff;border:none;border-radius:0 9px 9px 0;margin:0;min-width:54px;padding:0 12px;box-shadow:none} /* white % box flush-left against the gradient, rounded only on the outer-right */
+.mk-opt.active .mk-pct{flex:1 1 auto;justify-content:flex-end;background:#fff;border:none;border-radius:0 9px 9px 0;margin:0;min-width:54px;padding:0 14px;box-shadow:none} /* white box grows to fill the rest → fill + box flush, no dark track */
 
 /* ── TABS pill group ── */
 .tab-row{display:flex;gap:6px;background:var(--grey-bg);padding:4px;border-radius:var(--r-pill);width:fit-content;max-width:100%;overflow-x:auto;scrollbar-width:none;margin-top:16px}
@@ -946,6 +1007,9 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   background:linear-gradient(rgba(18,18,18,.82),rgba(18,18,18,.82)),var(--decor-img);background-size:cover;background-position:center}
 .st-track{display:flex;align-items:center;gap:16px;padding:4px 12px;white-space:nowrap;flex:none;animation:stScroll 48s linear infinite;will-change:transform}
 @keyframes stScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+/* pause the marquee while hovering (real-pointer devices only) or when manually paused */
+@media(hover:hover){.store-ticker:hover .st-track{animation-play-state:paused}}
+.store-ticker.paused .st-track{animation-play-state:paused}
 .st-group{display:inline-flex;align-items:center;gap:4px;flex:none} /* matches on the same date: 4px apart */
 .st-match{display:inline-flex;align-items:center;gap:4px;padding:6px 10px;border-radius:8px;flex:none;
   background:rgba(255,255,255,.16);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}

@@ -228,7 +228,7 @@ async function loadVoteCounts(){
     const {data,error}=await _sb.from('pass_vote_counts').select('player_id,votes');
     if(error||!data)return;
     const m={}; data.forEach(r=>{ m[r.player_id]=Number(r.votes)||0; });
-    players.forEach(p=>{ if(p.dbId) p.votes=m[p.dbId]||0; });
+    players.forEach(p=>{ if(p.dbId) p.realVotes=m[p.dbId]||0; }); // real app votes; p.votes getter adds the base
     updateTotalVotes(); // "Total Votes Cast" = sum of all players' real votes
     loadVoteTrends();   // real "Vote Trend (Last 24h)" % off the same refresh
   }catch(e){/* tally view not deployed yet — keep existing counts */}
@@ -247,7 +247,7 @@ async function loadVoteTrends(){
 // Render the real "Total Votes Cast" total on the home page.
 function updateTotalVotes(){
   const el=document.getElementById('totalVotes'); if(!el) return;
-  const total=(typeof players!=='undefined') ? players.reduce((s,p)=>s+(Number(p.votes)||0),0) : 0;
+  const total=(typeof players!=='undefined') ? players.reduce((s,p)=>s+(Number(p.realVotes)||0),0) : 0; // REAL votes cast in the app (not the made-up base)
   el.textContent=fmt(total);
 }
 
@@ -381,7 +381,9 @@ function mapPlayer(row, rankByPlayer){
     flag: COUNTRY_FLAG[country] || '',
     club: row.club || '',
     photo: row.photo_url || '',
-    votes: Number(rank.total_fc || 0),
+    base: playerBaseVotes({goals:st.goals||0, assists:st.assists||0, matches:st.matches||0, gpm:Number(st.goals_per_match||0), id:row.slug||row.id, name:row.name}),
+    realVotes: Number(rank.total_fc || 0),
+    get votes(){ return (Number(this.base)||0) + (Number(this.realVotes)||0); }, // base + real (each vote +1)
     trend: 0,
     goals: st.goals||0, assists: st.assists||0, matches: st.matches||0,
     wc: st.wc_apps||0, winRate: Number(st.win_rate||0),

@@ -29,7 +29,37 @@ function flagFallback(img,country){img.onerror=null;const e=(typeof flagEmoji===
 
 const fmt=n=>n.toLocaleString('en-US');
 const fcCoin='<img class="fc-coin" src="'+ASSETS.fc+'" alt="FC">';
-const fmtV=n=>n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':''+n;
+const fmtV=n=>n>=1e9?(n/1e9).toFixed(1)+'B':n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':''+n;
+
+// Base "fan support" per player — a made-up global vote count (in the millions) seeded by
+// the player's WC26 / club performance, so the leaderboard ranks the best performers with
+// the biggest fan bases at the top. Displayed votes = this base + the real app votes,
+// so every real user vote adds +1 on top of the base. Deterministic (stable across reloads).
+function _hashStr(s){let h=2166136261>>>0;s=String(s||'');for(let i=0;i<s.length;i++){h=Math.imul(h^s.charCodeAt(i),16777619)>>>0;}return h>>>0;}
+// Who would realistically pull the most fan votes TODAY → leaderboard order. Curated by
+// global popularity (the names fans actually search/vote for), each value in millions.
+// First matching name fragment wins, so list mega-stars first.
+const STAR_VOTES=[
+  ['messi',32],['cristiano ronaldo',31],['ronaldo',31],['mbappé',30],['mbappe',30],['neymar',27],
+  ['haaland',26],['vinícius',25],['vinicius',25],['bellingham',24],['lamine yamal',23],['yamal',23],
+  ['mohamed salah',22],['musiala',20],['harry kane',18],['h. kane',18],['pedri',17.5],
+  ['bruno fernandes',16.5],['lautaro',16],['julián álvarez',15.5],['j. álvarez',15.5],
+  ['rafael leão',14.5],['leão',14.5],['gavi',14],['bukayo saka',14],['b. saka',14],
+  ['son heung',13.5],['de bruyne',13.5],['rodrygo',13],['osimhen',13],['phil foden',13],['foden',13],
+  ['modric',12.5],['rashford',12],['pulisic',12],['endrick',11.5],['wirtz',11],['kvaratskhelia',9.5],
+  ['mac allister',9.5],['hakimi',9.5],['mitoma',9],['van dijk',8.5],['courtois',8],['saliba',8],
+  ['emi martí',8],['e. martí',8],['marquinhos',7.5],['alisson',7],['gvardiol',7],['stones',6.5],['pickford',6]
+];
+function playerBaseVotes(p){
+  const nm=String(p.name||'').toLowerCase();
+  for(let i=0;i<STAR_VOTES.length;i++){ if(nm.indexOf(STAR_VOTES[i][0])>=0) return Math.round(STAR_VOTES[i][1]*1e6); }
+  // non-stars sit well below the stars, lightly ordered by form so the mid-table isn't flat
+  const perf=(Number(p.goals)||0)*1 + (Number(p.assists)||0)*0.7 + (Number(p.matches)||0)*0.2 + (Number(p.gpm)||0)*2;
+  const spread=0.9 + (_hashStr(p.id||p.name||'')%1000)/1000*0.3; // 0.9–1.2 deterministic wobble
+  return Math.round((120000 + perf*90000) * spread); // ~110K–1.6M
+}
+// Displayed/ranked vote count for a player = made-up performance base + real app votes.
+function totalVotesFor(p){return (Number(p.base)||0) + (Number(p.realVotes)||0);}
 
 
 /* ════════ SLIDE MENU (mobile/tablet) ════════ */
@@ -56,6 +86,7 @@ function go(v){
   if(hd)hd.style.display=isPlayer?'none':'';
   if(st)st.style.display=isPlayer?'none':'flex';
   document.body.classList.toggle('player-full',isPlayer);
+  document.body.classList.toggle('lb-dark',v==='leaderboard'); // dark leaderboard → keep the header solid white
   window.scrollTo({top:0,behavior:'instant'});
   document.body.classList.remove('hdr-scrolled'); // header blur resets with the scroll position
   setTimeout(observeReveals,30);
@@ -79,6 +110,8 @@ function tick(){
   cdDays.textContent=String(dd).padStart(2,'0');cdHours.textContent=String(hh).padStart(2,'0');
   cdMins.textContent=String(mm).padStart(2,'0');cdSecs.textContent=String(Math.floor(d/1e3)).padStart(2,'0');
   const xc=document.getElementById('xiCountdown');if(xc){let g=Math.max(0,closeAt-Date.now());const gd=Math.floor(g/864e5),gh=Math.floor((g-gd*864e5)/36e5);xc.textContent=gd+'d '+String(gh).padStart(2,'0')+'h';}
+  // Leaderboard hero countdown — "25D 11H 45M"
+  const lt=document.getElementById('lbTimeLeft');if(lt){let g=Math.max(0,closeAt-Date.now());const ld=Math.floor(g/864e5),lh=Math.floor((g-ld*864e5)/36e5),lm=Math.floor((g%36e5)/6e4);lt.textContent=ld+'D '+lh+'H '+lm+'M';}
 }
 setInterval(tick,1000); // first immediate tick() is invoked from init.js (after flipIfChanged is defined)
 // "Total Votes Cast" = the real sum of every player's votes (updated by updateTotalVotes()

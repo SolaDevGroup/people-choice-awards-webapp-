@@ -166,11 +166,17 @@ function stMatchHTML(f){
 function renderStoreTicker(){
   const tr=document.getElementById('stTrack');if(!tr)return;
   const all=(typeof fixtures!=='undefined'&&fixtures)?fixtures:[];
-  // show the schedule from today forward (current date → next dates), earliest first.
-  const dayStart=new Date();dayStart.setHours(0,0,0,0);const ds=dayStart.getTime();
-  let fx=all.filter(f=>f.kickoff_at && new Date(f.kickoff_at).getTime()>=ds)
-           .sort((a,b)=>new Date(a.kickoff_at)-new Date(b.kickoff_at)).slice(0,12);
-  if(!fx.length)fx=all.slice(0,12); // fallback: nothing upcoming → show whatever we have
+  // Show from the current point in the schedule onward: drop games that have already been
+  // PLAYED (so if 2 of a day's 3 games are done, only the rest remain), but keep games that
+  // are ONGOING — kicked off and still inside the ~2.5h match window — plus all upcoming.
+  const now=Date.now(), WINDOW=2.5*3600e3;
+  let fx=all.filter(f=>{
+    if(!f.kickoff_at)return false;
+    if(f.status==='finished')return false;                    // already played
+    return now <= new Date(f.kickoff_at).getTime()+WINDOW;     // upcoming OR ongoing (live)
+  }).sort((a,b)=>new Date(a.kickoff_at)-new Date(b.kickoff_at)).slice(0,12);
+  // fallback (e.g. tournament over): show the most recent games so the bar isn't empty.
+  if(!fx.length)fx=all.filter(f=>f.kickoff_at).sort((a,b)=>new Date(b.kickoff_at)-new Date(a.kickoff_at)).slice(0,12).reverse();
   if(!fx.length){tr.innerHTML='';return;}
   // group consecutive fixtures by kickoff date: matches in one date sit together (4px gap),
   // the [dot] + [date] separators are their own items (16px gaps from the track).
@@ -184,11 +190,11 @@ function renderStoreTicker(){
     `<span class="st-dot"></span><span class="st-date">${stShortDate(g.iso)}</span>`
   ).join('');
   tr.innerHTML=set+set; // duplicate the set so the marquee loops seamlessly
-  tr.style.animationPlayState=_stPaused?'paused':'running';
+  const st=document.getElementById('storeTicker');if(st)st.classList.toggle('paused',_stPaused);
 }
 function toggleStoreTicker(){
   _stPaused=!_stPaused;
-  const tr=document.getElementById('stTrack');if(tr)tr.style.animationPlayState=_stPaused?'paused':'running';
+  const st=document.getElementById('storeTicker');if(st)st.classList.toggle('paused',_stPaused);
   const ic=document.querySelector('#stPause .material-icons-round');if(ic)ic.textContent=_stPaused?'play_arrow':'pause';
 }
 // ESPN FC — game highlights only (https://www.youtube.com/@ESPNFC/videos)

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 562 1190" preserveAspectRatio="xMidYMid slice">
+  <!-- maroon (rightmost, base) -->
+  <rect width="562" height="1190" fill="#2a0d0d"/>
+  <!-- dark teal band -->
+  <path d="M0 0 L408 0 C416 320 396 660 434 1190 L0 1190 Z" fill="#0b2520"/>
+  <!-- dark navy (large central) with the S-curve right edge -->
+  <path d="M0 0 L272 0 C300 150 300 270 286 360 C266 470 244 545 250 630 C262 800 332 990 390 1190 L0 1190 Z" fill="#0d1432"/>
+  <!-- olive-green far-left band -->
+  <path d="M0 0 L10 0 C18 290 34 560 68 820 C86 975 98 1090 108 1190 L0 1190 Z" fill="#28320c"/>
+</svg>

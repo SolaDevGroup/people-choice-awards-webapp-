@@ -600,12 +600,12 @@ async function loadPlayerCharts(p){
   // live totals + real 24h growth — support that LANDED on this player in the last 24h
   // (new or switched-in → updated_at), matching the player_vote_trends RPC.
   const total=votes.length;
-  if(p)p.votes=total; // keep the player's live vote total in sync (lists, podium)
+  if(p)p.realVotes=total; // keep the player's live REAL votes in sync; p.votes getter adds the base
   const cut=new Date();cut.setHours(cut.getHours()-24);
   const recent=(data||[]).filter(v=>v.updated_at&&new Date(v.updated_at)>=cut).length;
   const growth=(total-recent)>0?(recent/(total-recent)*100):(recent>0?100:0);
   if(p)p.trend=Math.round(growth*10)/10; // single source of truth → cards/leaderboard agree
-  const tv=document.getElementById('totalVotesVal');if(tv)tv.textContent=fmtV(total);
+  const tv=document.getElementById('totalVotesVal');if(tv)tv.textContent=fmtV(p?p.votes:total); // base + real
   const gv=document.getElementById('voteGrowthVal');if(gv){const up=growth>=0;gv.textContent=(up?'+':'')+growth.toFixed(1)+'%';gv.className='ov-big '+(up?'up':'down');gv.style.color=up?'var(--green)':'var(--pink)';}
 }
 
@@ -1101,37 +1101,54 @@ const moveHTML=m=>{const c=m>0?'up':m<0?'down':'flat-t';const tx=m>0?'+'+m:m<0?'
 // Baseline is captured at load + every 60s, so the +/- shows live change, not fake numbers.
 function captureLbBaseline(){state.lbBaseRank={};players.forEach((p,i)=>{state.lbBaseRank[p.id]=i;});}
 function lbMove(p,rankIdx){const b=state.lbBaseRank&&state.lbBaseRank[p.id];if(b==null)return 0;return Math.max(-9,Math.min(9,b-rankIdx));}
+// Figma leaderboard row — frosted card: rank · avatar · name+meta · votes+trend · heart.
+function lbRowHTML(p,rank){
+  const medal = rank<=3 ? ' lb-r'+rank : '';
+  const fav = !!(state.favs&&state.favs.has(p.id));
+  const av = p.photo
+    ? `<img src="${p.photo}" alt="" loading="lazy" onerror="this.remove()">`
+    : `<span class="lb-av-i">${p.short||(p.name||'').slice(0,2).toUpperCase()}</span>`;
+  const meta = [
+    (flagImg(p.country,12)||'') + (p.country?`<span>${p.country}</span>`:''),
+    (p.num?`<span class="lb-dot"></span><span class="lb-num">#${p.num}</span>`:'')
+  ].join('');
+  const t = Number(p.trend)||0;
+  const rankEl = rank<=4
+    ? `<span class="lb-rank lb-rank-badge"><img src="assets/leader${rank}.svg?v=20260627b" alt="${rank}"></span>`
+    : `<span class="lb-rank">${rank}</span>`;
+  return `<div class="lb-row${medal}" onclick="openPlayer('${p.id}','leaderboard')">
+    ${rankEl}
+    <span class="lb-av">${av}</span>
+    <div class="lb-body">
+      <div class="lb-name-col"><div class="lb-name">${p.name}</div><div class="lb-meta">${meta}</div></div>
+      <div class="lb-stat"><div class="lb-votes">${fmtV(p.votes)}</div><div class="lb-trend ${t>=0?'up':'down'}">${t>0?'+':''}${t.toFixed(1)}%</div></div>
+    </div>
+    <button class="lb-heart${fav?' on':''}" aria-label="Favourite" onclick="event.stopPropagation();toggleFav('${p.id}',this);this.classList.toggle('on',state.favs.has('${p.id}'));this.querySelector('span').textContent=state.favs.has('${p.id}')?'favorite':'favorite_border'"><span class="material-icons-round">${fav?'favorite':'favorite_border'}</span></button>
+  </div>`;
+}
 function renderLeaderboard(){
+  const lg=document.getElementById('lbLogo');if(lg&&!lg.getAttribute('src'))lg.src='assets/word_logo.svg?v=20260627b';
   if(state.ltab==='players'){
-    lbPodiumWrap.style.display='';
-    lbPodium.innerHTML=podiumHTML(players.slice(0,3));
-    lbList.innerHTML=players.slice(3,12).map((p,i)=>`
-    <div class="prow" onclick="openPlayer('${p.id}','leaderboard')">
-      <div class="p-rank">${i+4}</div>${avatarHTML(p)}
-      <div class="p-info"><div class="p-name">${p.name}</div><div class="p-meta">${p.country}</div></div>
-      <div class="p-votes"><div class="p-votes-num">${fmtV(p.votes)}</div></div>
-      ${moveHTML(lbMove(p,i+3))}
-    </div>`).join('');
+    lbList.innerHTML=players.slice(0,25).map((p,i)=>lbRowHTML(p,i+1)).join('');
   }else if(state.ltab==='fans'){
-    lbPodiumWrap.style.display='none';
     lbList.innerHTML=fans.map((f,i)=>`
-    <div class="prow" style="cursor:default;${f.me?'background:var(--purple-a);border-radius:12px;border-bottom-color:transparent;padding-left:10px;padding-right:10px;':''}">
-      <div class="p-rank" ${i<3?'style="color:var(--gold);"':''}>${i+1}</div>
-      <div class="avatar" style="width:40px;height:40px;font-size:12px;">${f.short}</div>
-      <div class="p-info"><div class="p-name">${f.name}${f.me?' <span style="font-size:9px;font-weight:800;color:var(--purple);">YOU</span>':''}</div><div class="p-meta">${f.c}</div></div>
-      <div class="p-votes"><div class="p-votes-num">${fmt(f.votes)}</div></div>
-      ${moveHTML(f.move)}
+    <div class="lb-row${i<3?' lb-r'+(i+1):''}${f.me?' lb-me':''}" style="cursor:default;">
+      <span class="lb-rank">${i+1}</span>
+      <span class="lb-av"><span class="lb-av-i">${f.short}</span></span>
+      <div class="lb-body">
+        <div class="lb-name-col"><div class="lb-name">${f.name}${f.me?' <span class="lb-you">YOU</span>':''}</div><div class="lb-meta"><span>${f.c}</span></div></div>
+        <div class="lb-stat"><div class="lb-votes">${fmt(f.votes)}</div></div>
+      </div>
     </div>`).join('');
   }else{
-    lbPodiumWrap.style.display='';
-    lbPodium.innerHTML='<div class="card" style="grid-column:1/-1;padding:16px;"><div class="lbl" style="margin-bottom:8px;">Global Support Map</div>'+worldMap()+'</div>';
-    lbList.innerHTML=countriesLB.map((c,i)=>{const fi=flagImg(c.name,26);return `
-    <div class="prow" onclick="openTeamPreds('${c.name}')">
-      <div class="p-rank" ${i<3?'style="color:var(--gold);"':''}>${i+1}</div>
-      <div style="width:40px;text-align:center;flex-shrink:0;line-height:0;">${fi||`<span style='font-size:25px'>${c.f}</span>`}</div>
-      <div class="p-info"><div class="p-name">${c.name}</div><div class="p-meta">Tap for predictions</div></div>
-      <div class="p-votes"><div class="p-votes-num">${fmtV(c.votes)}</div></div>
-      ${moveHTML(c.move)}
+    lbList.innerHTML=countriesLB.map((c,i)=>{const fi=flagImg(c.name,18);return `
+    <div class="lb-row${i<3?' lb-r'+(i+1):''}" onclick="openTeamPreds('${c.name}')">
+      <span class="lb-rank">${i+1}</span>
+      <span class="lb-av" style="background:transparent;">${fi||`<span style="font-size:22px;">${c.f}</span>`}</span>
+      <div class="lb-body">
+        <div class="lb-name-col"><div class="lb-name">${c.name}</div><div class="lb-meta"><span>Tap for predictions</span></div></div>
+        <div class="lb-stat"><div class="lb-votes">${fmtV(c.votes)}</div></div>
+      </div>
     </div>`}).join('');
   }
 }
