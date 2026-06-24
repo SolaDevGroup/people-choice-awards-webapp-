@@ -2,7 +2,7 @@
 function renderAll(){
   renderFeatured();renderHomePodium();renderHomeTrending();renderHomeMarkets();renderHomeExtra();
   renderVoteList();renderMarkets();renderPredHistory();renderLeaderboard();
-  renderNotifs();renderProfile();renderAnalytics();renderFcPacks();renderCompare();renderStoreChips();renderMerch();renderCust();renderProfileHero();renderGames();setSettingsPanel(state.setPanel||'account');renderTx();renderDaily();updateLevelUI();updateNotifBadges();syncBalance();renderAuthUI();
+  renderNotifs();renderProfile();renderAnalytics();renderFcPacks();renderCompare();renderStoreChips();renderMerch();renderCust();renderProfileHero();renderGames();renderXI();setSettingsPanel(state.setPanel||'account');renderTx();renderDaily();updateLevelUI();updateNotifBadges();syncBalance();renderAuthUI();
 }
 tick(); // first countdown paint (moved here so flipIfChanged, defined in a later module, exists)
 // hydrate brand assets
@@ -19,8 +19,12 @@ document.querySelectorAll('.fc-coin').forEach(el=>{if(!el.src)el.src=ASSETS.fc;}
 buildXISlots();renderXI();fillDropdowns();fillCompareSelects();renderAll();observeReveals();
 if(typeof renderStoreTicker==='function')renderStoreTicker(); // seed the Fan Store schedule ticker
 // Header progressive blur only kicks in once the page has scrolled under it.
-(function(){var onScroll=function(){document.body.classList.toggle('hdr-scrolled',(window.scrollY||document.documentElement.scrollTop||0)>8);};
- window.addEventListener('scroll',onScroll,{passive:true});onScroll();})();
+// scrollRestoration:manual stops Safari restoring a scroll position on load (which would
+// otherwise flag the page as "scrolled" and show the blur before the user scrolls).
+(function(){try{if('scrollRestoration' in history)history.scrollRestoration='manual';}catch(e){}
+ var onScroll=function(){document.body.classList.toggle('hdr-scrolled',(window.scrollY||document.documentElement.scrollTop||0)>8);};
+ window.addEventListener('scroll',onScroll,{passive:true});
+ window.scrollTo(0,0);onScroll();})();
 loadCatalog(); // replace seed data with live Supabase catalog, then re-render
 setInterval(refreshOdds,20000); // real odds refresh (no fake simulation)
 setInterval(refreshLeaderboard,60000); // real leaderboard rank movement (matches "every 60s")

@@ -79,7 +79,10 @@ async function signIn(email,password){
 
 async function signOut(){
   await _sb.auth.signOut();
-  state.user=null;state.profile=null;state.balance=0;state.totalVotes=0;state.hasPass=false;state.myVote=null;syncBalance();renderAuthUI();
+  state.user=null;state.profile=null;state.balance=0;state.totalVotes=0;state.hasPass=false;state.myVote=null;
+  // clear the submitted Predict-the-XI so it doesn't leak to the next user / guest
+  state.xi={};state.xiSubmitted=false;try{localStorage.removeItem('wc26_xi');localStorage.removeItem('wc26_xi_sub');}catch(e){}if(typeof renderXI==='function')renderXI();
+  syncBalance();renderAuthUI();
   loadUserCosmetics(); // clears owned/equipped back to the signed-out baseline
   loadPredictions();   // clears the forecast history to the signed-out state
   toast('Signed out','logout');go('home');
@@ -108,6 +111,7 @@ async function loadProfile(uid){
   await loadVoteState();            // pass + current vote → button states
   if(typeof renderVoteList==='function')renderVoteList();
   loadPredictions();                // the user's real forecast history
+  if(typeof loadPredictedXI==='function')loadPredictedXI(uid); // restore submitted Predict-the-XI (locked)
   if(typeof loadTransactions==='function')loadTransactions(); // real FC ledger
   await loadUserPlan();             // purchased pack → profile plan badge
   if(typeof renderProfileHero==='function')renderProfileHero();

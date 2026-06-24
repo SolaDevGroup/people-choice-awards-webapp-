@@ -64,35 +64,38 @@ const XI_FORMATION=[
 ];
 // "actual" most-voted per position (top by votes) — used to score predictions
 function topByPos(pos,n){return players.filter(p=>p.pos===pos).sort((a,b)=>b.votes-a.votes).slice(0,n);}
-state.xi={};state.xiSubmitted=false;
+state.xi=(()=>{try{return JSON.parse(localStorage.getItem('wc26_xi'))||{};}catch(e){return{};}})();
+state.xiSubmitted=(()=>{try{return localStorage.getItem('wc26_xi_sub')==='1';}catch(e){return false;}})();
+function saveXI(){try{localStorage.setItem('wc26_xi',JSON.stringify(state.xi||{}));localStorage.setItem('wc26_xi_sub',state.xiSubmitted?'1':'0');}catch(e){}}
 let xiSlots=[];
 function buildXISlots(){
   xiSlots=[];
   XI_FORMATION.forEach(line=>{for(let i=0;i<line.count;i++)xiSlots.push({pos:line.row,key:line.row+i});});
 }
 function renderXI(){
-  pitchRows.innerHTML=XI_FORMATION.map(line=>`
+  const pr=document.getElementById('pitchRows'); if(!pr)return;
+  pr.innerHTML=XI_FORMATION.map(line=>`
   <div class="pitch-line">
     ${Array.from({length:line.count}).map((_,i)=>{
       const key=line.row+i;const pid=state.xi[key];const p=pid&&players.find(x=>x.id===pid);
-      const correct=state.xiSubmitted&&p&&topByPos(line.pos,line.count).some(tp=>tp.id===pid);
-      return `<button class="xi-slot" onclick="openXIPicker('${line.pos}','${key}')">
-        <div class="xi-dot ${p?'filled':''} ${correct?'correct':''}">${p?p.short:'<span class=\"material-icons-round\">add</span>'}</div>
-        <div class="xi-pos">${line.pos}</div>
-        ${p?`<div class="xi-name">${p.name.split(' ').slice(-1)[0]}</div>`:''}
+      const correct=state.xiSubmitted&&p&&topByPos(line.row,line.count).some(tp=>tp.id===pid);
+      const inner=p?(p.photo?`<img src="${p.photo}" alt="" loading="lazy" onerror="this.remove()">`:p.short):'<span class="material-icons-round">add</span>';
+      return `<button class="xi-slot" onclick="openXIPicker('${line.row}','${key}')">
+        <div class="xi-dot ${p?'filled':''} ${correct?'correct':''}">${inner}</div>
+        <div class="xi-pos">${({FWD:'Forward',MID:'Midfield',DEF:'Defence',GK:'Keeper'}[line.row])||line.row}</div>
+        ${p?`<div class="xi-name">${p.last||(p.name||'').split(' ').slice(-1)[0]}</div>`:''}
       </button>`;
     }).join('')}
   </div>`).join('');
-  const n=Object.keys(state.xi).length;
-  xiProgressLbl.textContent=`${n} / 11 selected`;
-  xiSubmitBtn.textContent=state.xiSubmitted?'XI Submitted ✓':'Submit Predicted XI';
-  xiSubmitBtn.style.opacity=state.xiSubmitted?'.6':'1';
+  const n=Object.keys(state.xi).filter(k=>state.xi[k]).length;
+  const lbl=document.getElementById('xiProgressLbl'); if(lbl)lbl.textContent=`${n} / 11 selected`;
+  const btn=document.getElementById('xiSubmitBtn'); if(btn){btn.textContent=state.xiSubmitted?'XI Submitted ✓':'Submit Predicted XI';btn.style.opacity=state.xiSubmitted?'.6':'1';}
 }
 function openXIPicker(pos,key){
   if(state.xiSubmitted){toast('Your XI is locked in','lock');return;}
   document.getElementById('xiPickerTitle').textContent='Pick '+({FWD:'Forward',MID:'Midfielder',DEF:'Defender',GK:'Goalkeeper'}[pos]);
   const used=new Set(Object.entries(state.xi).filter(([k])=>k!==key).map(([,v])=>v));
-  const cands=players.filter(p=>p.pos===pos);
+  const cands=players.filter(p=>p.pos===pos).sort((a,b)=>b.votes-a.votes); // most-voted first
   document.getElementById('xiPickerList').innerHTML=cands.map(p=>{const dis=used.has(p.id);return `
     <button class="sheet-item" ${dis?'disabled style="opacity:.4;"':''} onclick="pickXI('${key}','${p.id}')">
       ${avatarHTML(p,38)}
@@ -103,21 +106,35 @@ function openXIPicker(pos,key){
   document.getElementById('xiPicker').classList.add('open');document.body.style.overflow='hidden';
 }
 function pickXI(key,pid){
-  state.xi[key]=pid;
+  state.xi[key]=pid;saveXI();
   document.getElementById('xiPicker').classList.remove('open');document.body.style.overflow='';
   renderXI();
 }
-function submitXI(){
+// remove a pick (long-press / clear from the picker)
+function clearXI(key){if(state.xiSubmitted)return;delete state.xi[key];saveXI();document.getElementById('xiPicker').classList.remove('open');document.body.style.overflow='';renderXI();}
+async function submitXI(){
   if(!requireAuth('Sign in to submit your Starting XI'))return;
   if(state.xiSubmitted)return;
-  if(Object.keys(state.xi).length<11){toast('Pick all 11 positions first','sports_soccer');return;}
-  state.xiSubmitted=true;renderXI();
-  // score
+  if(Object.keys(state.xi).filter(k=>state.xi[k]).length<11){toast('Pick all 11 positions first','sports_soccer');return;}
+  state.xiSubmitted=true;saveXI();renderXI();
+  // persist to Supabase — submit-once (one row per user; no UPDATE/DELETE allowed)
+  if(state.user&&typeof _sb!=='undefined'&&_sb){
+    try{const {error}=await _sb.from('predicted_xi').insert({user_id:state.user.id,picks:state.xi});
+      if(error&&!/duplicate|unique|already exists/i.test(error.message))console.warn('[xi] save failed:',error.message);
+    }catch(e){console.warn('[xi]',e);}
+  }
+  // score against the current most-voted player per position
   let correct=0;
-  XI_FORMATION.forEach(line=>{const top=topByPos(line.pos,line.count).map(p=>p.id);
+  XI_FORMATION.forEach(line=>{const top=topByPos(line.row,line.count).map(p=>p.id);
     for(let i=0;i<line.count;i++){const pid=state.xi[line.row+i];if(top.includes(pid))correct++;}});
   if(correct===11)toast('Perfect XI! You\u2019re in the running for the special prize 🏆','military_tech');
   else toast(`XI submitted · ${correct}/11 match the current most-voted`,'sports_soccer');
+}
+// Restore a user's submitted XI from the DB (locked) on login / reload.
+async function loadPredictedXI(uid){
+  try{const {data}=await _sb.from('predicted_xi').select('picks').eq('user_id',uid).maybeSingle();
+    if(data&&data.picks){state.xi=data.picks;state.xiSubmitted=true;if(typeof saveXI==='function')saveXI();if(typeof renderXI==='function')renderXI();}
+  }catch(e){/* table not deployed yet */}
 }
 
 
