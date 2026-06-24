@@ -1,0 +1,33 @@
+name: Sync fixtures
+
+# Cron job #1 — keeps the WC26 match schedule + live scores/status fresh in Supabase.
+# Light: one API-Football call per run (re-imports public.fixtures).
+# Reuses the proven importer: scripts/import-wc26.mjs --fixtures-only
+
+on:
+  schedule:
+    # Every 15 minutes. Tune to your API plan's daily budget (see .github/workflows/README.md).
+    # FREE plan = 100 calls/day → this alone is ~96/day, so on free use a wider interval.
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {}   # also runnable on-demand from the Actions tab (use this to test)
+
+concurrency:
+  group: sync-fixtures
+  cancel-in-progress: false   # never interrupt a run mid-write
+
+jobs:
+  fixtures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Refresh fixtures
+        env:
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          WC_SEASON: ${{ vars.WC_SEASON }}        # defaults to 2026 in the script if unset
+        run: node scripts/import-wc26.mjs --fixtures-only
