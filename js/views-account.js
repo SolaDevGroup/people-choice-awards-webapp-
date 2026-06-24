@@ -36,32 +36,93 @@ function renderProfile(){
   if(typeof statVotes!=='undefined'&&statVotes)statVotes.textContent=fmt(state.myVote?1:0);
 }
 
-/* ════════ ANALYTICS ════════ */
-function ageBarsHTML(){
-  const data=[['<20',28],['20-24',58],['25-29',92],['30-34',64],['35+',38]];
-  const max=Math.max(...data.map(d=>d[1]));
-  return `<div style="display:flex;align-items:flex-end;gap:12px;height:140px;padding-top:8px;">
-    ${data.map(([l,v])=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end;">
-      <div style="width:100%;max-width:34px;height:${v/max*100}%;background:var(--purple-2);border-radius:6px 6px 0 0;"></div>
-      <div class="caption" style="color:var(--ink-3);font-size:10px;font-weight:600;">${l}</div></div>`).join('')}
-  </div>`;
+/* ════════ ANALYTICS (real, system-wide) ════════ */
+// Bucket any roster position string (GK/DEF/MID/FWD or Goalkeeper/Defender/…/Attacker)
+// into one of four categories for the distribution donut.
+function posCategory(pos){
+  const p=String(pos||'').trim().toUpperCase();
+  if(p.startsWith('G'))return 'GK';
+  if(p.startsWith('D'))return 'DEF';
+  if(p.startsWith('M'))return 'MID';
+  if(p.startsWith('F')||p.startsWith('A')||p.startsWith('W')||p.startsWith('S'))return 'FWD';
+  return 'MID';
 }
-function multiDonut(){
+// Donut from real segments: [{pct, color}, …]
+function multiDonut(segs){
   const size=128,thick=20,r=(size-thick)/2,c=2*Math.PI*r;
-  const segs=[[45,'#FF2065'],[30,'#6640FF'],[20,'#3D6BFF'],[5,'#FFB600']];
+  segs=(segs&&segs.length)?segs:[{pct:100,color:'var(--border)'}];
   let acc=0,out='';
-  segs.forEach(([pct,col])=>{
-    out+=`<circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${col}" stroke-width="${thick}"
-      stroke-dasharray="${c*pct/100-2} ${c-(c*pct/100-2)}" stroke-dashoffset="${-c*acc/100}" transform="rotate(-90 ${size/2} ${size/2})"/>`;
+  segs.forEach(s=>{const pct=Math.max(0,s.pct||0);if(pct<=0)return;
+    const dash=Math.max(0,c*pct/100-2);
+    out+=`<circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${s.color}" stroke-width="${thick}"
+      stroke-dasharray="${dash.toFixed(2)} ${(c-dash).toFixed(2)}" stroke-dashoffset="${(-c*acc/100).toFixed(2)}" transform="rotate(-90 ${size/2} ${size/2})"/>`;
     acc+=pct;
   });
   return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="display:block;">${out}</svg>`;
 }
-function renderAnalytics(){
-  anTrend.innerHTML=sparkline(7,560,180,true);
-  anMap.innerHTML=worldMap();
-  posDonut.innerHTML=multiDonut();
-  ageBars.innerHTML=ageBarsHTML();
+// Position distribution = share of votes cast for players of each position (live roster
+// votes). With no votes yet it falls back to the roster make-up so the donut isn't empty.
+function renderPositionDonut(){
+  const votes={FWD:0,MID:0,DEF:0,GK:0},roster={FWD:0,MID:0,DEF:0,GK:0};
+  let votesTotal=0,rosterTotal=0;
+  ((typeof players!=='undefined')?players:[]).forEach(p=>{const cat=posCategory(p.pos),w=Number(p.votes)||0;
+    votes[cat]+=w;votesTotal+=w;roster[cat]+=1;rosterTotal+=1;});
+  // real fan-vote distribution: share of votes by the voted player's position. Falls back
+  // to the roster make-up only when nobody has voted yet (so the donut is never empty).
+  const useVotes=votesTotal>0;
+  const src=useVotes?votes:roster, total=(useVotes?votesTotal:rosterTotal)||1;
+  const order=[['FWD','#FF2065'],['MID','#6640FF'],['DEF','#3D6BFF'],['GK','#FFB600']];
+  if(typeof posDonut!=='undefined'&&posDonut)posDonut.innerHTML=multiDonut(order.map(([k,col])=>({pct:src[k]/total*100,color:col})));
+  const lp=document.querySelectorAll('#view-analytics .legend .legend-pct');
+  order.forEach(([k],i)=>{if(lp[i])lp[i].textContent=Math.round(src[k]/total*100)+'%';});
+}
+// Vote trend — cumulative votes over the last 7 days (smooth-curve chart, same as player detail)
+function renderAnTrend(trend){
+  const el=document.getElementById('anTrend');if(!el)return;
+  trend=Array.isArray(trend)?trend:[];
+  const points=trend.map(d=>Number(d.count)||0);
+  const labels=trend.map(d=>{const dt=new Date(d.day+'T00:00:00');return isNaN(dt)?String(d.day):dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});});
+  el.innerHTML=trendSVG(points.length?points:[0,0],labels.length?labels:['',''],560,180);
+}
+// Country support — reuse the player-detail support map with system-wide vote counts
+function renderAnCountry(country){
+  country=Array.isArray(country)?country:[];
+  const byCountry={};
+  country.forEach(c=>{const code=c.code;if(!code)return;
+    const name=(typeof SIGNUP_CODE!=='undefined'&&(SIGNUP_CODE[String(code).toUpperCase()]||SIGNUP_CODE[code]))||code;
+    byCountry[name]=(byCountry[name]||0)+(Number(c.count)||0);});
+  const el=document.getElementById('anMap');
+  if(el&&!el.querySelector('.map-loading'))el.innerHTML='<div class="map-loading"></div>';
+  if(typeof renderSupportMap==='function')renderSupportMap('anMap',byCountry);
+}
+// Age distribution — bars from registered fans' date_of_birth
+function renderAnAge(age){
+  const el=document.getElementById('ageBars');if(!el)return;
+  age=Array.isArray(age)?age:[];
+  const order=['<20','20-24','25-29','30-34','35+'];
+  const m={};age.forEach(a=>{m[a.bucket]=Number(a.count)||0;});
+  const data=order.map(b=>[b,m[b]||0]);
+  const max=Math.max(1,...data.map(d=>d[1]));
+  const any=data.some(d=>d[1]>0);
+  el.innerHTML=`<div style="display:flex;align-items:flex-end;gap:12px;height:140px;padding-top:8px;">
+    ${data.map(([l,v])=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end;">
+      <div title="${v} fan${v===1?'':'s'}" style="width:100%;max-width:34px;height:${any?(v/max*100):0}%;min-height:${v>0?4:0}px;background:var(--purple-2);border-radius:6px 6px 0 0;transition:height .5s ease;"></div>
+      <div class="caption" style="color:var(--ink-3);font-size:10px;font-weight:600;">${l}</div></div>`).join('')}
+  </div>${any?'':'<div class="caption" style="text-align:center;color:var(--ink-4);margin-top:10px;">No data yet — votes from fans with a birth date populate this.</div>'}`;
+}
+async function renderAnalytics(){
+  renderPositionDonut(); // instant, from the live roster
+  if(typeof _sb==='undefined'||!_sb){renderAnTrend([]);renderAnAge([]);return;}
+  try{
+    const {data,error}=await _sb.rpc('get_analytics');
+    if(error)throw error;
+    renderAnTrend((data&&data.trend)||[]);
+    renderAnCountry((data&&data.country)||[]);
+    renderAnAge((data&&data.age)||[]);
+  }catch(e){
+    console.warn('[analytics] aggregate load failed:',e.message||e);
+    renderAnTrend([]);renderAnCountry([]);renderAnAge([]);
+  }
 }
 
 /* ════════ FC STORE ════════ */

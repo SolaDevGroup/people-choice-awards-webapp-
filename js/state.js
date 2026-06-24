@@ -45,13 +45,22 @@ function go(v){
   const inMore=['markets','compare','notifications','analytics','signup','login','profile','startingxi','games','settings','transactions'].includes(v);
   document.getElementById('moreBtn').classList.toggle('active',inMore);
   if(window.innerWidth<1024)closeMenu();
-  // Player Detail has no footer / decor-bar in the design — hide them there, show elsewhere.
+  // Player Detail has its OWN header + no footer/decor — hide the global chrome there, show elsewhere.
+  const isPlayer=(v==='player');
   const fb=document.querySelector('.footer'),db=document.querySelector('.decor-bar');
-  if(fb)fb.style.display=(v==='player')?'none':'';
-  if(db)db.style.display=(v==='player')?'none':'';
+  const mh=document.querySelector('.m-header'),hd=document.querySelector('.header-decor');
+  const st=document.getElementById('storeTicker');
+  if(fb)fb.style.display=isPlayer?'none':'';
+  if(db)db.style.display=isPlayer?'none':'';
+  if(mh)mh.style.display=isPlayer?'none':'';
+  if(hd)hd.style.display=isPlayer?'none':'';
+  if(st)st.style.display=isPlayer?'none':'flex';
+  document.body.classList.toggle('player-full',isPlayer);
   window.scrollTo({top:0,behavior:'instant'});
+  document.body.classList.remove('hdr-scrolled'); // header blur resets with the scroll position
   setTimeout(observeReveals,30);
   if(v==='transactions'&&typeof loadTransactions==='function')loadTransactions(); // fresh ledger
+  if(v==='analytics'&&typeof renderAnalytics==='function')renderAnalytics(); // fresh system-wide aggregates
 }
 
 /* ════════ COUNTDOWN + TICKER ════════ */

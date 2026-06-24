@@ -1,0 +1,35 @@
+name: Sync player stats
+
+# Cron job #2 — refreshes player goals / assists / matches / minutes after match days.
+# Heavier: a full per-team sweep (~64 API-Football calls, several minutes, rate-limited).
+# Reuses the proven importer: scripts/import-wc26.mjs --stats-only
+# (that flag also refreshes fixtures at the end, so stats days self-heal the schedule too.)
+
+on:
+  schedule:
+    # Every 6 hours, offset by 30 min so it never collides with the fixtures job.
+    # Catches finished matches a few times a day. Daily ('30 6 * * *') is also fine.
+    - cron: '30 */6 * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: sync-player-stats
+  cancel-in-progress: false
+
+jobs:
+  stats:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25   # rate-limited API calls take a while; give it room
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Refresh player stats
+        env:
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          WC_SEASON: ${{ vars.WC_SEASON }}        # defaults to 2026 in the script if unset
+          MAX_CALLS: ${{ vars.MAX_CALLS }}        # defaults to 95 in the script if unset
+        run: node scripts/import-wc26.mjs --stats-only

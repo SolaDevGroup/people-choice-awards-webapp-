@@ -137,6 +137,54 @@ function copyLink(name){
   else done();
 }
 
+/* ════════ SHARE PLAYER ════════ */
+// Deep-link to a player: ?player=<id>. init.js reads it on load and opens the detail page.
+function playerShareUrl(id){return location.origin+location.pathname+'?player='+encodeURIComponent(id);}
+let _shareUrl='', _shareText='';
+// Brand SVG paths (simple-icons, 24×24, white fill)
+const SHARE_BRANDS={
+  whatsapp:{label:'WhatsApp',color:'#25D366',path:'M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.885 9.885M20.52 3.449C18.24 1.245 15.24 0 12.045 0 5.463 0 .104 5.359.101 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.652a11.882 11.882 0 005.71 1.447h.005c6.585 0 11.946-5.359 11.949-11.893a11.821 11.821 0 00-3.479-8.453'},
+  x:{label:'X',color:'#000000',path:'M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z'},
+  facebook:{label:'Facebook',color:'#1877F2',path:'M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z'},
+  telegram:{label:'Telegram',color:'#26A5E4',path:'M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.139-5.061 3.345-.479.329-.913.489-1.302.481-.428-.009-1.252-.242-1.865-.442-.751-.244-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z'}
+};
+function openSharePlayer(id,name){
+  _shareUrl=playerShareUrl(id);
+  const p=(typeof players!=='undefined')?players.find(x=>x.id===id):null;
+  const nm=(p&&p.name)||name||'this player';
+  // Rich share text: flag + name + nationality/position/number, then a clear call-to-action.
+  const flag=(p&&typeof flagEmoji==='function'&&flagEmoji(p.country))||'';
+  const role=p?[p.country,(typeof posName==='function'?posName(p.pos):p.pos),p.num?'#'+p.num:''].filter(Boolean).join(' · '):'';
+  const text=`🗳️ I'm backing ${flag?flag+' ':''}${nm}${role?' ('+role+')':''} for WC26 Fan Player of the Tournament! 🏆 Cast your vote:`;
+  document.getElementById('shareSub').textContent=`Send ${nm} to anyone — opening the link takes them straight to the stats & vote page.`;
+  const u=encodeURIComponent(_shareUrl), t=encodeURIComponent(text);
+  _shareText=text;
+  const hrefs={
+    whatsapp:`https://wa.me/?text=${t}%20${u}`,
+    x:`https://twitter.com/intent/tweet?text=${t}&url=${u}`,
+    facebook:`https://www.facebook.com/sharer/sharer.php?u=${u}`,
+    telegram:`https://t.me/share/url?url=${u}&text=${t}`
+  };
+  document.getElementById('shareTitle').textContent=`Share ${nm}`;
+  document.getElementById('shareLinkInput').value=_shareUrl;
+  let html=Object.keys(SHARE_BRANDS).map(k=>{const b=SHARE_BRANDS[k];
+    return `<a class="share-item" href="${hrefs[k]}" target="_blank" rel="noopener" onclick="closeModal('shareModal')"><span class="share-ico" style="background:${b.color}"><svg viewBox="0 0 24 24" width="22" height="22" fill="#fff" aria-hidden="true"><path d="${b.path}"/></svg></span><span class="share-lbl">${b.label}</span></a>`;
+  }).join('');
+  // native share sheet (mobile / supported browsers) → reach every other app
+  if(navigator.share)html+=`<button class="share-item" onclick="nativeSharePlayer()"><span class="share-ico" style="background:#6640FF"><span class="material-icons-round">ios_share</span></span><span class="share-lbl">More</span></button>`;
+  document.getElementById('shareGrid').innerHTML=html;
+  openModal('shareModal');
+}
+function copyShareLink(){
+  const done=()=>toast('Link copied to clipboard','link');
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(_shareUrl).then(done,done);
+  else{const inp=document.getElementById('shareLinkInput');inp.select();try{document.execCommand('copy');}catch(e){}done();}
+}
+function nativeSharePlayer(){
+  if(navigator.share){navigator.share({title:'WC26 Fan Vote',text:_shareText,url:_shareUrl}).then(()=>closeModal('shareModal'),()=>{});}
+  else copyShareLink();
+}
+
 /* ════════ VOTE FLOW ════════ */
 // Decide what the Vote button should look like for a given player, given the user's
 // pass + their single (changeable-once) vote. Returns {label, disabled, voted}.
@@ -325,19 +373,44 @@ function worldMap(hotspots){
 }
 /* ---- real vote-trend + global-support (driven by the votes table) ---- */
 // Same sparkline visual as sparkline(), but from real data points + labels.
+// smooth Catmull-Rom → cubic-bézier path through the points (the Figma's flowing curve)
+function smoothLinePath(pts){
+  if(!pts.length)return '';
+  if(pts.length<2)return `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+  let d=`M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+  for(let i=0;i<pts.length-1;i++){
+    const p0=pts[i-1]||pts[i],p1=pts[i],p2=pts[i+1],p3=pts[i+2]||pts[i+1];
+    const c1x=p1[0]+(p2[0]-p0[0])/6,c1y=p1[1]+(p2[1]-p0[1])/6;
+    const c2x=p2[0]-(p3[0]-p1[0])/6,c2y=p2[1]-(p3[1]-p1[1])/6;
+    d+=` C${c1x.toFixed(1)} ${c1y.toFixed(1)} ${c2x.toFixed(1)} ${c2y.toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+  }
+  return d;
+}
+let _trendUID=0;
 function trendSVG(points,labels,W,H){
   W=W||600;H=H||180;
   const pts=points&&points.length?points:[0,0];
-  const min=Math.min(...pts),max=Math.max(...pts),range=(max-min)||1,pad=12,bot=26;
-  const xy=pts.map((v,i)=>[pad+i*(W-2*pad)/Math.max(pts.length-1,1),H-bot-((v-min)/range)*(H-pad-bot)]);
-  const line=xy.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
-  const area=line+` L ${xy[xy.length-1][0].toFixed(1)} ${H-bot} L ${xy[0][0].toFixed(1)} ${H-bot} Z`;
-  const n=labels.length,lbls=labels.map((t,i)=>`<text class="axis-lbl" x="${pad+i*(W-2*pad)/Math.max(n-1,1)}" y="${H-6}" text-anchor="${i===0?'start':i===n-1?'end':'middle'}">${t}</text>`).join('');
+  const max=Math.max(...pts,1),range=max||1;
+  const lpad=36,rpad=10,tpad=16,bpad=30;
+  const px=i=>lpad+i*(W-lpad-rpad)/Math.max(pts.length-1,1);
+  const py=v=>tpad+(1-v/range)*(H-tpad-bpad);
+  const xy=pts.map((v,i)=>[px(i),py(v)]);
+  const line=smoothLinePath(xy);
+  const base=(H-bpad).toFixed(1);
+  const area=`${line} L${xy[xy.length-1][0].toFixed(1)} ${base} L${xy[0][0].toFixed(1)} ${base} Z`;
+  // y-axis labels (0 → max in 3 steps)
+  const yt=[0,1,2,3].map(k=>{const v=max*k/3;return `<text class="axis-lbl" x="${lpad-9}" y="${(py(v)+3.5).toFixed(1)}" text-anchor="end">${fmtV(Math.round(v))}</text>`;}).join('');
+  const n=labels.length||1,lx=i=>lpad+i*(W-lpad-rpad)/Math.max(n-1,1);
+  const xl=labels.map((t,i)=>`<text class="axis-lbl" x="${lx(i).toFixed(0)}" y="${H-7}" text-anchor="${i===0?'start':i===n-1?'end':'middle'}">${t}</text>`).join('');
+  const uid='gt'+(++_trendUID); // unique gradient ids — multiple charts share the DOM, dup ids break url(#…)
   return `<svg class="chart-svg" viewBox="0 0 ${W} ${H}" aria-hidden="true">
-    <defs><linearGradient id="gtrend" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#6640FF" stop-opacity=".28"/><stop offset="100%" stop-color="#6640FF" stop-opacity="0"/></linearGradient></defs>
-    <path d="${area}" fill="url(#gtrend)"/>
-    <path d="${line}" fill="none" stroke="#6640FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-    ${xy.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="#6640FF" stroke="#fff" stroke-width="1.5"/>`).join('')}${lbls}</svg>`;
+    <defs>
+      <linearGradient id="${uid}a" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#6640FF" stop-opacity=".5"/><stop offset="55%" stop-color="#6640FF" stop-opacity=".18"/><stop offset="100%" stop-color="#6640FF" stop-opacity="0"/></linearGradient>
+      <linearGradient id="${uid}b" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stop-color="#3D6BFF"/><stop offset="100%" stop-color="#6640FF"/></linearGradient>
+    </defs>
+    <path d="${area}" fill="url(#${uid}a)"/>
+    <path d="${line}" fill="none" stroke="url(#${uid}b)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    ${yt}${xl}</svg>`;
 }
 function last7Days(){
   const out=[],now=new Date();
@@ -477,7 +550,7 @@ async function renderSupportMap(containerId,byCountry){
     const Map=google.maps.Map, Marker=google.maps.Marker;
     const list=signupCountryList();
     const wanted=new Set(list.map(c=>COUNTRY_ISO3[c]).filter(Boolean));
-    el.style.height='230px';el.style.borderRadius='14px';el.style.overflow='hidden';el.style.position='relative';
+    el.style.height='230px';el.style.borderRadius='24px';el.style.overflow='hidden';el.style.position='relative';
     // Build the map in an overlay div so the loading shimmer stays visible until the map is
     // actually rendered, then fade it in — no jarring swap from the placeholder.
     const mapDiv=document.createElement('div');
@@ -514,7 +587,7 @@ async function loadPlayerCharts(p){
   if(!p.dbId)return;
   // Supporter-Pass model: one row per voter (weight 1). Read the country live from the
   // voter's profile (robust even if the denormalized column on the row is stale/null).
-  const {data,error}=await _sb.from('pass_vote').select('created_at,country_code,profiles(country_code)').eq('player_id',p.dbId);
+  const {data,error}=await _sb.from('pass_vote').select('created_at,updated_at,country_code,profiles(country_code)').eq('player_id',p.dbId);
   if(error){console.warn('[charts] votes load failed:',error.message);return;}
   const votes=(data||[]).map(v=>({created_at:v.created_at,fc_allocated:1,profiles:{country_code:(v.profiles&&v.profiles.country_code)||v.country_code}}));
   // trend — range-aware (7d / month / ytd), same engine as the home Tournament Pulse
@@ -524,12 +597,14 @@ async function loadPlayerCharts(p){
   const byCountry={};
   votes.forEach(v=>{const cc=v.profiles&&v.profiles.country_code;if(!cc)return;const name=SIGNUP_CODE[String(cc).toUpperCase()]||cc;byCountry[name]=(byCountry[name]||0)+1;});
   renderSupportMap('globalSupportMap',byCountry);
-  // live totals + 24h growth (each vote counts as 1 supporter)
+  // live totals + real 24h growth — support that LANDED on this player in the last 24h
+  // (new or switched-in → updated_at), matching the player_vote_trends RPC.
   const total=votes.length;
   if(p)p.votes=total; // keep the player's live vote total in sync (lists, podium)
   const cut=new Date();cut.setHours(cut.getHours()-24);
-  const old=votes.filter(v=>new Date(v.created_at)<=cut).reduce((s,v)=>s+(v.fc_allocated||0),0);
-  const growth=old>0?((total-old)/old*100):(total>0?100:0);
+  const recent=(data||[]).filter(v=>v.updated_at&&new Date(v.updated_at)>=cut).length;
+  const growth=(total-recent)>0?(recent/(total-recent)*100):(recent>0?100:0);
+  if(p)p.trend=Math.round(growth*10)/10; // single source of truth → cards/leaderboard agree
   const tv=document.getElementById('totalVotesVal');if(tv)tv.textContent=fmtV(total);
   const gv=document.getElementById('voteGrowthVal');if(gv){const up=growth>=0;gv.textContent=(up?'+':'')+growth.toFixed(1)+'%';gv.className='ov-big '+(up?'up':'down');gv.style.color=up?'var(--green)':'var(--pink)';}
 }
@@ -541,36 +616,35 @@ function openPlayer(id,from){
   const g=p.trend>=0;
   const pPreds=playerPreds(p); // keep a ref so we can fill real odds after render
   playerDetail.innerHTML=`
-  <div class="detail-hero">
-    <div class="pcard-shine"></div>
-    ${(p&&p.photo)?`<img class="detail-hero-img" src="${p.photo}" alt="" loading="lazy" onerror="this.remove()">`:`<div class="detail-hero-mark">${p.num}</div>`}
-    <div class="hero-top">
-      <button class="hero-icon" onclick="go(state.backTo)" aria-label="Back"><span class="material-icons-round">arrow_back</span></button>
-      <div class="hero-htitle"><div class="hero-htitle-t">Player Detail</div><div class="hero-htitle-s">See all player's stats</div></div>
-      <div class="hero-actions">
-        <button class="hero-icon" onclick="copyLink('${(p.name||'').replace(/'/g,'')}')" aria-label="Share"><span class="material-icons-round">ios_share</span></button>
-        <button class="hero-icon" onclick="toggleFav('${p.id}',this);this.querySelector('span').textContent=state.favs.has('${p.id}')?'favorite':'favorite_border'" aria-label="Favourite">
-          <span class="material-icons-round">${state.favs.has(p.id)?'favorite':'favorite_border'}</span></button>
-      </div>
+  <header class="pd-header" id="pdHeader">
+    <button class="hero-icon" onclick="go(state.backTo)" aria-label="Back"><span class="material-icons-round">arrow_back</span></button>
+    <div class="hero-htitle"><div class="hero-htitle-t">Player Detail</div><div class="hero-htitle-s">See all player's stats</div></div>
+    <div class="hero-actions">
+      <button class="hero-icon" onclick="openSharePlayer('${p.id}','${(p.name||'').replace(/'/g,'')}')" aria-label="Share"><span class="material-icons-round">ios_share</span></button>
+      <button class="hero-icon" onclick="toggleFav('${p.id}',this);this.querySelector('span').textContent=state.favs.has('${p.id}')?'favorite':'favorite_border'" aria-label="Favourite">
+        <span class="material-icons-round">${state.favs.has(p.id)?'favorite':'favorite_border'}</span></button>
     </div>
+  </header>
+  <div class="detail-hero">
+    ${(p&&p.photo)?`<img class="detail-hero-img" src="${p.photo}" alt="" loading="lazy" onerror="this.remove()">`:`<div class="detail-hero-mark">${p.num}</div>`}
+    ${(p&&p.photo)?`<div class="pd-blur" aria-hidden="true"><img src="${p.photo}"><img src="${p.photo}"><img src="${p.photo}"><img src="${p.photo}"><img src="${p.photo}"><img src="${p.photo}"></div>`:''}
     <div class="detail-first">${p.first}</div>
     <div class="detail-last">${p.last}</div>
     <div class="detail-meta">
-      <div class="detail-meta-item"><span class="mdot"></span>${flagImg(p.country,16)||p.flag} ${p.country}</div>
-      <div class="detail-meta-item"><span class="mdot"></span>${posName(p.pos)}</div>
-      ${p.club?`<div class="detail-meta-item"><span class="mdot"></span>${p.club}</div>`:''}
+      <div class="detail-meta-item">${flagImg(p.country,16)||p.flag} ${p.country}</div>
+      <div class="detail-meta-item">#${p.num} <span class="mdot"></span> ${posName(p.pos)}</div>
     </div>
   </div>
   <div class="overlap-card">
     <div class="ov-top">
       <div><span class="lbl-xs">Total Votes</span><div class="ov-big" id="totalVotesVal">${fmtV(p.votes)}</div></div>
-      <div><span class="lbl-xs">Vote Trend</span><div class="ov-big ${g?'up':'down'}" id="voteGrowthVal" style="color:${g?'var(--green)':'var(--pink)'};">${g?'+':''}${p.trend.toFixed(1)}%</div><div class="caption" style="color:var(--ink-4);">Last 24h</div></div>
+      <div><div class="ov-trend-col"><span class="lbl-xs">Vote Trend</span><div class="ov-big ${g?'up':'down'}" id="voteGrowthVal" style="color:${g?'var(--green)':'var(--pink)'};">${g?'+':''}${p.trend.toFixed(1)}%</div><div class="caption" style="color:var(--ink-4);">Last 24h</div></div></div>
     </div>
     <div class="ov-stats">
-      <div><div class="ov-stat-v">${p.goals}</div><div class="ov-stat-l">Goals</div></div>
-      <div><div class="ov-stat-v">${p.assists}</div><div class="ov-stat-l">Assists</div></div>
-      <div><div class="ov-stat-v">${p.matches}</div><div class="ov-stat-l">Matches</div></div>
-      <div><div class="ov-stat-v">${p.wc||0}</div><div class="ov-stat-l">WC Apps</div></div>
+      <div><div class="ov-stat-l">Goals</div><div class="ov-stat-v">${p.goals}</div></div>
+      <div><div class="ov-stat-l">Assists</div><div class="ov-stat-v">${p.assists}</div></div>
+      <div><div class="ov-stat-l">Matches</div><div class="ov-stat-v">${p.matches}</div></div>
+      <div><div class="ov-stat-l">WC Apps</div><div class="ov-stat-v">${p.wc||0}</div></div>
     </div>
   </div>
   <div class="chart-head"><span class="lbl">Vote Trend</span>
@@ -582,13 +656,18 @@ function openPlayer(id,from){
   <div id="voteTrendChart">${trendSVG([0,0,0,0,0,0,0],last7Days().filter((_,i)=>i%2===0).map(x=>x.label),600,180)}</div>
   <div class="chart-head"><span class="lbl">Global Support</span></div>
   <div class="map-wrap" id="globalSupportMap">${mapLoadingHTML()}</div>
+  <div class="map-legend"><span>Low</span><span class="map-legend-track"></span><span>High</span></div>
   <div class="chart-head"><span class="lbl">Predictions for ${p.name.split(' ').slice(-1)[0]}</span><span class="caption" style="color:var(--ink-4);font-weight:600;">Yes / No</span></div>
   <div class="pq-list" id="playerPredList">${playerQListHTML(pPreds)}</div>
   <div class="detail-cta">
     ${voteBtnHTML(p,'btn-block')}
-    <button class="sq-btn" onclick="copyLink('${(p.name||'').replace(/'/g,'')}')" aria-label="Share"><span class="material-icons-outlined">ios_share</span></button>
+    <button class="sq-btn" onclick="openCompareWith('${p.id}')" aria-label="Compare players"><img class="sq-ico" src="assets/share.svg?v=20260624g" alt="Compare"></button>
   </div>`;
   go('player');
+  // progressive-blur header: frost in once the hero scrolls up under the fixed header
+  if(window._pdScroll)window.removeEventListener('scroll',window._pdScroll);
+  window._pdScroll=function(){const h=document.getElementById('pdHeader');if(h)h.classList.toggle('scrolled',(window.scrollY||window.pageYOffset||0)>40);};
+  window.addEventListener('scroll',window._pdScroll,{passive:true});window._pdScroll();
   loadPlayerCharts(p); // fill trend chart + support map + live totals from real votes
   // Fill real odds for any player questions that already have a market (default 50/50).
   const renderPP=()=>{const el=document.getElementById('playerPredList');if(el)el.innerHTML=playerQListHTML(pPreds);};
@@ -616,6 +695,20 @@ function fillCompareSelects(){
   cmpA.value=pick[0]?pick[0].id:'';
   cmpB.value=pick[1]?pick[1].id:(pick[0]?pick[0].id:'');
   renderCompare();
+}
+// Open the Compare page pre-filled with this player in slot A; slot B gets a
+// sensible different default the user can change.
+function openCompareWith(pid){
+  const a=players.find(p=>p.id===pid);
+  go('compare');
+  if(typeof cmpA==='undefined'||!cmpA){return;}
+  if(!cmpA.options.length && typeof fillCompareSelects==='function')fillCompareSelects();
+  if(a)cmpA.value=pid;
+  if(cmpB && (cmpB.value===pid || !cmpB.value)){
+    const other=players.find(p=>p.id!==pid && p.votes>0)||players.find(p=>p.id!==pid);
+    if(other)cmpB.value=other.id;
+  }
+  if(typeof renderCompare==='function')renderCompare();
 }
 function cmpCard(p,side){
   const img=p.photo?`<img class="cmp2-photo" src="${p.photo}" alt="${(p.name||'').replace(/"/g,'')}" onerror="this.remove()">`:'';
@@ -676,12 +769,30 @@ function mkCount(n){return n>=1000?'+'+(n/1000).toFixed(1).replace(/\.0$/,'')+'k
 function mkInitials(name){const n=(name||'').trim()||'?';return ((n.match(/[A-Za-z0-9]+/g)||[n]).map(w=>w[0]).join('').slice(0,2)||'?').toUpperCase();}
 // one predictor avatar — their photo, else name-initials (sidebar style)
 function mkAvatar(p){return p.photo?`<span class="mk-pa" style="background-image:url('${String(p.photo).replace(/'/g,'')}')"></span>`:`<span class="mk-pa" title="${(p.name||'').replace(/"/g,'')}">${mkInitials(p.name)}</span>`;}
-function mkOption(m,o,pct,active,idx){
+// Resolve the player a vs-option refers to: by id first, then by matching the label to a name.
+function mkNorm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[^a-z]/g,'');}
+function mkFindPlayer(label){
+  if(!label)return null;
+  const words=String(label).split(/\s+/).map(mkNorm).filter(w=>w.length>2&&w!=='jr');
+  if(!words.length)return null;
+  return players.find(p=>{const pl=mkNorm(p.last),pn=mkNorm(p.name);return words.some(w=>(pl&&(pl.includes(w)||w.includes(pl)))||(pn&&pn.includes(w)));})||null;
+}
+// A yes/no market about a country → that country's name (for the flag chip).
+function mkMarketCountry(m){
+  if(typeof FLAG_FILE==='undefined'||!m||!m.title)return '';
+  return Object.keys(FLAG_FILE).find(c=>m.title.indexOf(c)>=0)||'';
+}
+function mkOption(m,o,pct,active,idx,big){
   const isYN=m.kind==='yn';
-  const player=o.pid?players.find(x=>x.dbId===o.pid||x.id===o.pid):null;
-  const av=isYN?'':(player&&player.photo?`<img class="mk-av" src="${player.photo}" alt="">`:(player?`<span class="mk-av mk-av-i">${player.short||''}</span>`:''));
+  // player markets → real photo before the name; fall back to id-match then label-match, then initials
+  let player=o.pid?players.find(x=>x.dbId===o.pid||x.id===o.pid):null;
+  if(!player&&!isYN)player=mkFindPlayer(o.n);
+  const av=player?(player.photo?`<img class="mk-av" src="${player.photo}" alt="">`:`<span class="mk-av mk-av-i">${player.short||mkInitials(player.name)}</span>`):'';
+  // country yes/no markets → the country flag after the YES/NO label
+  const ctry=isYN?mkMarketCountry(m):'';
+  const flag=ctry?`<span class="mk-flag">${flagImg(ctry,16)||''}</span>`:'';
   const nm=isYN
-    ?`<img class="mk-yn-img" src="assets/${(o.n||'').toLowerCase()}_${active?'active':'inactive'}.svg" alt="${o.n}">`
+    ?`<img class="mk-yn-img" src="assets/${(o.n||'').toLowerCase()}_${active?'active':'inactive'}.svg?v=20260623a" alt="${o.n}">`
     :`<span class="mk-name">${(o.n||'').toUpperCase()}</span>`;
   // Real predictors (supporter_count = total). Avatars come from market_predictors() — up to
   // 3 recent faces; if the RPC isn't live yet, fall back to the current user on their own pick.
@@ -698,8 +809,8 @@ function mkOption(m,o,pct,active,idx){
   } else if(sup>0){
     voters=`<span class="mk-voters"><span class="mk-count">${mkCount(sup)}</span></span>`;
   }
-  return `<button class="mk-opt ${active?'active':'inactive'}" onclick="openMarketPred('${m.id}','${idx===1?'b':'a'}')">
-    <span class="mk-fill" style="--fill:${pct}%">${av}${nm}${voters}</span>
+  return `<button class="mk-opt ${active?'active':'inactive'}${big?'':' sm'}" onclick="openMarketPred('${m.id}','${idx===1?'b':'a'}')">
+    <span class="mk-fill" style="--fill:${pct}%">${av}${nm}${flag}${voters}</span>
     <span class="mk-pct">${pct}%</span>
   </button>`;
 }
@@ -708,12 +819,13 @@ function marketCardHTML(m){
   // active option = the one this user has forecast on; if they haven't, both stay grey/inactive
   const pick=(state.predictions||[]).find(p=>p.market===m.title);
   const pn=pick&&pick.pick;
+  const engaged=pick?Number(pick.fc||0):0; // FC the user engaged in this market (only if they forecast)
   return `<div class="card market-card">
     <div class="market-top"><span class="market-type">${m.type}</span>
       <span class="market-closes"><span class="material-icons-outlined">schedule</span>Closes ${m.closes}</span></div>
     <div class="market-title">${m.title}</div>
-    <div class="market-pool">Pool: <strong>${fmt(m.pool)} FC</strong></div>
-    <div class="mk-opts">${m.options.map((o,i)=>mkOption(m,o,pc[i],pn===o.n,i)).join('')}</div>
+    <div class="market-pool"><span>Pool: <strong>${fmt(m.pool)} FC</strong></span>${engaged?`<span class="mk-engaged">FC Engaged: <strong>${fmt(engaged)} FC</strong></span>`:''}</div>
+    <div class="mk-opts">${(mx=>m.options.map((o,i)=>mkOption(m,o,pc[i],pn===o.n,i,pc[i]>=mx)))(Math.max(...pc)).join('')}</div>
   </div>`;
 }
 function openMarketPred(mid,side){
@@ -772,7 +884,7 @@ function playerPreds(p){
   }[p.pos];
   // Lazy markets: each question gets a stable slug; its market is created the first time
   // someone forecasts it. Shows 50/50 until then (loadQuestionPcts fills real odds on open).
-  return base.map((q,i)=>({id:p.id+'_'+i,q,yes:50,
+  return base.map((q,i)=>({id:p.id+'_'+i,q,yes:50,country:p.country,
     slug:p.dbId?('pq_'+p.dbId+'_'+i):null,category:'player',labelA:'Yes',labelB:'No'}));
 }
 function slugify(s){return String(s||'').replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,'');}
@@ -836,23 +948,33 @@ async function confirmPred(){
   const sideLabel=curPred.side==='a'?curPred.aLabel:curPred.bLabel;
   const m=curPred.market;
   if(m&&m.dbId&&m.options&&m.options.length>=2){
-    // Real, server-authoritative forecast: place_prediction deducts FC, records it, moves
-    // the odds (fc_allocated) and grants XP — so it persists across refresh.
     const opt=curPred.side==='a'?m.options[0]:m.options[1];
+    // ── Optimistic UI: flip the bar to the selected state + close the modal INSTANTLY,
+    //    then persist on the server in the background (roll back if it fails). ──
+    const snap={pool:m.pool||0,alloc:m.options.map(o=>o.alloc||0),preds:(state.predictions||[]).slice(),bal:state.balance};
+    m.pool=(m.pool||0)+amt; opt.alloc=(opt.alloc||0)+amt;
+    const pct=marketPcts(m)[curPred.side==='a'?0:1];
+    state.predictions=(state.predictions||[]).filter(p=>p.market!==m.title);
+    state.predictions.unshift({market:m.title,pick:sideLabel,fc:amt,status:'open',sidePct:pct,curPct:pct});
+    state.balance=Math.max(0,state.balance-amt);
+    syncBalance();renderMarkets();renderHomeMarkets();closeModal('predModal');
+    // Real, server-authoritative forecast: place_prediction deducts FC, records it, moves the odds.
     const {data,error}=await _sb.rpc('place_prediction',{p_market:m.dbId,p_option:opt.id,p_stake:amt});
     if(error){
-      if(/fc_balance|Insufficient Fan Credits/i.test(error.message||'')){ await syncBalanceFromDB(); notEnoughFC(); return; }
-      toast(error.message||'Forecast failed','error');return;
+      // roll back the optimistic changes
+      m.pool=snap.pool; m.options.forEach((o,i)=>o.alloc=snap.alloc[i]); state.predictions=snap.preds;
+      await syncBalanceFromDB(); renderMarkets(); renderHomeMarkets();
+      if(/fc_balance|Insufficient Fan Credits/i.test(error.message||'')){ notEnoughFC(); }
+      else { toast(error.message||'Forecast failed','error'); }
+      return;
     }
     if(data&&data.balance!=null)state.balance=Number(data.balance);
-    // Re-read this market's stakes so the % + bar update live.
+    // Reconcile the real stakes/odds from the server.
     try{
       const {data:os}=await _sb.from('market_options').select('id,fc_allocated').eq('market_id',m.dbId);
       if(os){const mp={};os.forEach(o=>{mp[o.id]=Number(o.fc_allocated||0);});m.options.forEach(o=>{if(mp[o.id]!=null)o.alloc=mp[o.id];});}
     }catch(e){}
-    m.pool=(m.pool||0)+amt;
-    const pct=marketPcts(m)[curPred.side==='a'?0:1];
-    syncBalance();renderMarkets();renderHomeMarkets();closeModal('predModal');
+    syncBalance();renderMarkets();renderHomeMarkets();
     loadPredictions(); if(typeof loadTransactions==="function")loadTransactions(); // refresh history + FC ledger
     const net=(data&&data.potential_payout!=null)?Number(data.potential_payout):predPayout(amt,pct).net;
     toast(`Forecast placed · potential win ${fmt(net)} FC`,'insights');
@@ -862,19 +984,32 @@ async function confirmPred(){
   if(lz&&lz.slug){
     // Lazy market: the server creates the market on first forecast, then places the bet —
     // so per-team / per-player questions persist and move just like the main markets.
+    const qTitle=lz.q||curPred.q;
+    // ── Optimistic UI: flip the bar to active + close the modal INSTANTLY, then persist
+    //    on the server in the background (roll back if it fails). Mirrors the markets flow. ──
+    const snap={preds:(state.predictions||[]).slice(),bal:state.balance,yes:lz.yes};
+    state.predictions=(state.predictions||[]).filter(p=>p.market!==qTitle);
+    state.predictions.unshift({market:qTitle,pick:sideLabel,fc:amt,status:'open',sidePct:lz.yes,curPct:lz.yes});
+    state.balance=Math.max(0,state.balance-amt);
+    syncBalance();closeModal('predModal');
+    if(typeof _activeQuestionRender==='function')_activeQuestionRender(); // bar flips active NOW
     const {data,error}=await _sb.rpc('forecast_question',{
-      p_slug:lz.slug,p_title:lz.q||curPred.q,p_category:lz.category||'country',
+      p_slug:lz.slug,p_title:qTitle,p_category:lz.category||'country',
       p_label_a:lz.labelA||'Yes',p_label_b:lz.labelB||'No',p_side:curPred.side,p_stake:amt});
     if(error){
-      if(/fc_balance|Insufficient Fan Credits/i.test(error.message||'')){ await syncBalanceFromDB(); notEnoughFC(); return; }
+      state.predictions=snap.preds; state.balance=snap.bal; lz.yes=snap.yes; // roll back
+      await syncBalanceFromDB();
+      if(typeof _activeQuestionRender==='function')_activeQuestionRender();
+      if(/fc_balance|Insufficient Fan Credits/i.test(error.message||'')){ notEnoughFC(); return; }
       toast(error.message||'Forecast failed','error');return;
     }
     if(data&&data.balance!=null)state.balance=Number(data.balance);
     const av=Number((data&&data.alloc_a)||0)+100,bv=Number((data&&data.alloc_b)||0)+100;
-    lz.yes=Math.round(av/(av+bv)*100);                 // update the question's live odds
-    syncBalance();closeModal('predModal');
+    lz.yes=Math.round(av/(av+bv)*100);                 // reconcile the question's live odds
+    const pe=state.predictions.find(p=>p.market===qTitle); if(pe){pe.curPct=lz.yes;pe.sidePct=lz.yes;}
+    syncBalance();
+    if(typeof _activeQuestionRender==='function')_activeQuestionRender();
     loadPredictions(); if(typeof loadTransactions==="function")loadTransactions(); // refresh history + FC ledger
-    if(typeof _activeQuestionRender==='function')_activeQuestionRender(); // refresh the open list
     const net=(data&&data.potential_payout!=null)?Number(data.potential_payout):predPayout(amt,lz.yes).net;
     toast(`Forecast placed · potential win ${fmt(net)} FC`,'insights');
     return;
@@ -902,17 +1037,27 @@ function playerQCardHTML(q){
   _questionMap[q.id]=q;
   const yes=q.yes||50, no=100-yes;
   const pick=(state.predictions||[]).find(x=>x.market===q.q); const pn=pick&&pick.pick; // active = user's pick
+  const engaged=pick?Number(pick.fc||0):0;
   const closes=(typeof VOTING_CLOSES!=='undefined')?VOTING_CLOSES.toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'}):'Jul 19';
-  const bar=(label,pct,active)=>`<button class="mk-opt ${active?'active':'inactive'}" onclick="openQuestionPred('${q.id}','${label==='No'?'b':'a'}')">
-      <span class="mk-fill" style="--fill:${pct}%"><img class="mk-yn-img" src="assets/${label.toLowerCase()}_${active?'active':'inactive'}.svg" alt="${label}"></span>
+  // player YES/NO questions: NO country flag (flags are only for country-based markets) —
+  // just the YES/NO label + predictor avatars, like the Predictions page.
+  const bar=(label,pct,active,big)=>{
+    let voters='';
+    if(active&&state.user){
+      const av=(state.profile&&state.profile.avatar_url)||'';
+      voters=`<span class="mk-voters"><span class="mk-stack">${mkAvatar({name:(typeof pName==='function'?pName():'You'),photo:av})}</span></span>`;
+    }
+    return `<button class="mk-opt ${active?'active':'inactive'}${big?'':' sm'}" onclick="openQuestionPred('${q.id}','${label==='No'?'b':'a'}')">
+      <span class="mk-fill" style="--fill:${pct}%"><img class="mk-yn-img" src="assets/${label.toLowerCase()}_${active?'active':'inactive'}.svg?v=20260623a" alt="${label}">${voters}</span>
       <span class="mk-pct">${pct}%</span>
     </button>`;
+  };
   return `<div class="card market-card">
     <div class="market-top"><span class="market-type">Yes / No</span>
       <span class="market-closes"><span class="material-icons-outlined">schedule</span>Closes ${closes}</span></div>
     <div class="market-title">${q.q}</div>
-    ${q.pool?`<div class="market-pool">Pool: <strong>${fmt(q.pool)} FC</strong></div>`:''}
-    <div class="mk-opts">${bar('Yes',yes,pn==='Yes')}${bar('No',no,pn==='No')}</div>
+    <div class="market-pool"><span>Pool: <strong>${fmt(q.pool||0)} FC</strong></span>${engaged?`<span class="mk-engaged">FC Engaged: <strong>${fmt(engaged)} FC</strong></span>`:''}</div>
+    <div class="mk-opts">${bar('Yes',yes,pn==='Yes',yes>=no)}${bar('No',no,pn==='No',no>yes)}</div>
   </div>`;
 }
 function playerQListHTML(arr){return arr.map(playerQCardHTML).join('');}

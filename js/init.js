@@ -9,7 +9,7 @@ tick(); // first countdown paint (moved here so flipIfChanged, defined in a late
 navLogo.src=ASSETS.pca;heroLogo.src=ASSETS.logo;
 var sbl=document.getElementById('sbLogo');if(sbl)sbl.src=ASSETS.pca;
 var wc=document.getElementById('welcomeCoin');if(wc)wc.src=ASSETS.fc;
-var dcd=document.getElementById('dailyCtaDay');if(dcd)dcd.textContent=state.streak+1;
+if(typeof renderDailyCta==='function')renderDailyCta();
 var ml=document.getElementById('mLogo');if(ml)ml.src=ASSETS.pca;var mc2=document.getElementById('mCoin');if(mc2)mc2.src=ASSETS.fc;
 [document.getElementById('sbCoin'),document.getElementById('hdrCoin')].forEach(el=>{if(el)el.src=ASSETS.fc;});
 document.documentElement.style.setProperty('--decor-img',"url('"+ASSETS.decor+"')");
@@ -17,6 +17,10 @@ initSplash();
 [navCoin,homeCoin,statCoin].forEach(el=>{if(el)el.src=ASSETS.fc;});
 document.querySelectorAll('.fc-coin').forEach(el=>{if(!el.src)el.src=ASSETS.fc;});
 buildXISlots();renderXI();fillDropdowns();fillCompareSelects();renderAll();observeReveals();
+if(typeof renderStoreTicker==='function')renderStoreTicker(); // seed the Fan Store schedule ticker
+// Header progressive blur only kicks in once the page has scrolled under it.
+(function(){var onScroll=function(){document.body.classList.toggle('hdr-scrolled',(window.scrollY||document.documentElement.scrollTop||0)>8);};
+ window.addEventListener('scroll',onScroll,{passive:true});onScroll();})();
 loadCatalog(); // replace seed data with live Supabase catalog, then re-render
 setInterval(refreshOdds,20000); // real odds refresh (no fake simulation)
 setInterval(refreshLeaderboard,60000); // real leaderboard rank movement (matches "every 60s")
@@ -68,5 +72,23 @@ setTimeout(custPromoPop,9000); // promote customization
       tries++;setTimeout(sync,1500);
     };
     setTimeout(sync,1200);
+  }catch(e){}
+})();
+
+// Shared player deep-link: ?player=<id> opens that player's detail page. The roster loads
+// async (loadCatalog), so poll briefly until the player exists, then open it.
+(function handlePlayerDeepLink(){
+  try{
+    const id=new URLSearchParams(location.search).get('player');
+    if(!id)return;
+    history.replaceState(null,'',location.pathname+location.hash); // tidy the URL, don't reopen on refresh
+    const tryOpen=()=>{
+      if(typeof players!=='undefined' && players.find(x=>x.id===id) && typeof openPlayer==='function'){
+        openPlayer(id,'home'); return true;
+      }
+      return false;
+    };
+    if(tryOpen())return;
+    let n=0; const iv=setInterval(()=>{ if(tryOpen()||++n>40)clearInterval(iv); },300); // up to ~12s for the catalog
   }catch(e){}
 })();

@@ -10,7 +10,7 @@ function togglePass(inpId,iconId){
 // Enable the submit button only once every required field is filled (+ terms agreed).
 function validateSignup(){
   const b=document.getElementById('suBtn');if(!b)return;
-  b.disabled=!(suName.value.trim()&&suEmail.value.trim()&&suPass.value&&suTerms.checked);
+  b.disabled=!(suName.value.trim()&&suEmail.value.trim()&&suPass.value&&suTerms.checked); // DOB is optional
 }
 function validateLogin(){
   const b=document.getElementById('liBtn');if(!b)return;
@@ -19,21 +19,23 @@ function validateLogin(){
 
 async function createAccount(){
   if(!suName.value.trim()||!suEmail.value.trim()||!suPass.value){toast('Please fill in all fields','error');return;}
+  const dob=(document.getElementById('suDob')&&document.getElementById('suDob').value)||null; // optional
   if(!suTerms.checked){toast('Please accept the Terms of Use','error');return;}
   const btn=document.getElementById('suBtn');btn.textContent='Creating…';btn.disabled=true;
   const country=(suCountry&&suCountry.value)||null;
   const {data,error}=await _sb.auth.signUp({
     email:suEmail.value.trim(),
     password:suPass.value,
-    options:{data:{display_name:suName.value.trim(),country}}
+    options:{data:{display_name:suName.value.trim(),country,dob}}
   });
   btn.textContent='Create Account';validateSignup();
   if(error){toast(error.message,'error');return;}
   suPass.value='';validateSignup();
   if(data.session){
     // Email confirmation disabled → user is signed in immediately.
-    // Persist the chosen country on the profile so votes attribute to it (map).
-    if(country)await _sb.from('profiles').update({country_code:country}).eq('id',data.user.id);
+    // Persist country + date of birth on the profile (country → support map, DOB → age analytics).
+    const patch={};if(country)patch.country_code=country;if(dob)patch.date_of_birth=dob;
+    if(Object.keys(patch).length)await _sb.from('profiles').update(patch).eq('id',data.user.id);
     toast('Welcome to WC26!','celebration');
     go('home');
   }else{
@@ -89,10 +91,15 @@ async function loadProfile(uid){
   state.profile=data;
   // Backfill country from signup metadata if the profile lacks it (email-confirm
   // signups don't have a session when createAccount runs, so it's saved here).
-  const metaCountry=state.user&&state.user.user_metadata&&state.user.user_metadata.country;
-  if(!data.country_code&&metaCountry){
-    await _sb.from('profiles').update({country_code:metaCountry}).eq('id',uid);
-    data.country_code=metaCountry;state.profile.country_code=metaCountry;
+  const meta=(state.user&&state.user.user_metadata)||{};
+  if(!data.country_code&&meta.country){
+    await _sb.from('profiles').update({country_code:meta.country}).eq('id',uid);
+    data.country_code=meta.country;state.profile.country_code=meta.country;
+  }
+  // Same for date of birth (drives the Analytics age distribution).
+  if(!data.date_of_birth&&meta.dob){
+    await _sb.from('profiles').update({date_of_birth:meta.dob}).eq('id',uid);
+    data.date_of_birth=meta.dob;state.profile.date_of_birth=meta.dob;
   }
   state.balance=data.fc_balance;
   state.xp=Number(data.reputation_xp)||0; // drives the level bar (real XP)
@@ -106,6 +113,10 @@ async function loadProfile(uid){
   if(typeof renderProfileHero==='function')renderProfileHero();
   if(typeof updateLevelUI==='function')updateLevelUI();   // real level / XP / votes
   if(typeof renderProfile==='function')renderProfile();   // profile page stats + history
+  // Reward state (welcome-once + daily streak) follows the server truth, and re-open
+  // any reward modal the user tapped "claim" on before they were signed in.
+  if(typeof syncRewardStateFromProfile==='function')syncRewardStateFromProfile();
+  if(typeof reopenPendingReward==='function')reopenPendingReward();
   // The support map needs a country. If this account never set one (e.g. Google sign-up),
   // ask once after the splash so their vote can be plotted.
   const metaC=state.user&&state.user.user_metadata&&state.user.user_metadata.country;
@@ -196,6 +207,7 @@ async function refreshFixtures(){
   await loadFixtures();
   if(typeof renderHomeGames==='function')renderHomeGames();
   if(typeof renderGames==='function')renderGames();
+  if(typeof renderStoreTicker==='function')renderStoreTicker();
 }
 // Live leaderboard: re-read real vote counts (so OTHER users' votes move the ranks),
 // show the movement vs the current baseline, then re-baseline for the next 60s window.
@@ -218,7 +230,19 @@ async function loadVoteCounts(){
     const m={}; data.forEach(r=>{ m[r.player_id]=Number(r.votes)||0; });
     players.forEach(p=>{ if(p.dbId) p.votes=m[p.dbId]||0; });
     updateTotalVotes(); // "Total Votes Cast" = sum of all players' real votes
+    loadVoteTrends();   // real "Vote Trend (Last 24h)" % off the same refresh
   }catch(e){/* tally view not deployed yet — keep existing counts */}
+}
+// Real 24h vote trend per player (player_vote_trends RPC) → players[].trend.
+async function loadVoteTrends(){
+  try{
+    const {data,error}=await _sb.rpc('player_vote_trends');
+    if(error||!data)return;
+    const m={}; data.forEach(r=>{ m[r.player_id]=Number(r.trend)||0; });
+    players.forEach(p=>{ if(p.dbId) p.trend=(m[p.dbId]!=null?m[p.dbId]:0); });
+    if(typeof renderVoteList==='function')renderVoteList();
+    if(typeof renderLeaderboard==='function')renderLeaderboard();
+  }catch(e){/* trend RPC not deployed yet — leave trend at 0 */}
 }
 // Render the real "Total Votes Cast" total on the home page.
 function updateTotalVotes(){
@@ -454,6 +478,8 @@ async function loadCatalog(){
     // (Markets are loaded + rendered independently above, so they don't wait on players.)
 
     await loadFixtures(); // match schedule (live-first sort)
+    if(typeof renderStoreTicker==='function')renderStoreTicker(); // refresh ticker with real fixtures
+    if(typeof renderAnalytics==='function')renderAnalytics(); // real analytics once the roster/votes are in
 
     // Overlay live supporter counts (Supporter-Pass votes) + the user's own vote state.
     await loadVoteCounts(); players.sort(rankCmp);

@@ -154,6 +154,43 @@ function fixtureBig(f,live){
   if(h>=48)return{v:`${Math.floor(h/24)}d ${h%24}h`,lbl:'TO KICKOFF'};
   return{v:`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`,lbl:'HRS · MINS'};
 }
+/* ---- Fan Store live-match ticker (moving schedule bar under the header) ---- */
+let _stPaused=false;
+function stShortDate(iso){const d=new Date(iso);return isNaN(d)?'':d.getDate()+' '+d.toLocaleDateString('en-US',{month:'short'});}
+function stMatchHTML(f){
+  const d=new Date(f.kickoff_at);
+  const tm=isNaN(d)?'TBD':String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); // 24h, Figma "09:00"
+  const fa=flagImg(f.a,15),fb=flagImg(f.b,15);
+  return `<span class="st-match"><span class="st-time">${tm}</span>${fa}<span class="st-dash">-</span>${fb}</span>`;
+}
+function renderStoreTicker(){
+  const tr=document.getElementById('stTrack');if(!tr)return;
+  const all=(typeof fixtures!=='undefined'&&fixtures)?fixtures:[];
+  // show the schedule from today forward (current date → next dates), earliest first.
+  const dayStart=new Date();dayStart.setHours(0,0,0,0);const ds=dayStart.getTime();
+  let fx=all.filter(f=>f.kickoff_at && new Date(f.kickoff_at).getTime()>=ds)
+           .sort((a,b)=>new Date(a.kickoff_at)-new Date(b.kickoff_at)).slice(0,12);
+  if(!fx.length)fx=all.slice(0,12); // fallback: nothing upcoming → show whatever we have
+  if(!fx.length){tr.innerHTML='';return;}
+  // group consecutive fixtures by kickoff date: matches in one date sit together (4px gap),
+  // the [dot] + [date] separators are their own items (16px gaps from the track).
+  const groups=[];let cur=null,lastDate=null;
+  fx.forEach(f=>{const d=fmtKickoff(f.kickoff_at).date;
+    if(d!==lastDate){cur={iso:f.kickoff_at,matches:[]};groups.push(cur);lastDate=d;}
+    cur.matches.push(f);
+  });
+  const set=groups.map(g=>
+    `<span class="st-group">${g.matches.map(stMatchHTML).join('')}</span>`+
+    `<span class="st-dot"></span><span class="st-date">${stShortDate(g.iso)}</span>`
+  ).join('');
+  tr.innerHTML=set+set; // duplicate the set so the marquee loops seamlessly
+  tr.style.animationPlayState=_stPaused?'paused':'running';
+}
+function toggleStoreTicker(){
+  _stPaused=!_stPaused;
+  const tr=document.getElementById('stTrack');if(tr)tr.style.animationPlayState=_stPaused?'paused':'running';
+  const ic=document.querySelector('#stPause .material-icons-round');if(ic)ic.textContent=_stPaused?'play_arrow':'pause';
+}
 // ESPN FC — game highlights only (https://www.youtube.com/@ESPNFC/videos)
 const ESPNFC='https://www.youtube.com/@ESPNFC/videos';
 const highlights=[

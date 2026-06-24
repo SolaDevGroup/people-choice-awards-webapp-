@@ -257,7 +257,16 @@ function updateLevelUI(){
   document.querySelectorAll('.acct-country-rank .rank-country').forEach(e=>e.textContent=c||'');
 }
 const DAILY_LADDER=[50,75,100,150,200,300,500];
+// Home "Daily Reward" CTA — dynamic day, capped at 7, hidden once today is claimed.
+function renderDailyCta(){
+  const cta=document.querySelector('.daily-cta'); if(!cta)return;
+  if(state.dailyClaimed){ cta.style.display='none'; return; } // nothing to claim today → hide
+  cta.style.display='';
+  const day=Math.min((Number(state.streak)||0)+1,7);
+  const dEl=document.getElementById('dailyCtaDay'); if(dEl)dEl.textContent=day;
+}
 function renderDaily(){
+  renderDailyCta();
   const wrap=document.getElementById('dailyLadder');if(!wrap)return;
   wrap.innerHTML=DAILY_LADDER.map((fc,i)=>{const day=i+1;const done=day<=state.streak;const today=day===state.streak+1;
     return `<div class="daily-day ${done?'done':''} ${today?'today':''}">
@@ -265,33 +274,73 @@ function renderDaily(){
       <div class="daily-coin">${done?'<span class="material-icons-round">check</span>':`<img class="fc-coin" src="${ASSETS.fc}">`}</div>
       <div class="daily-fc">${fc}</div></div>`;}).join('');
   const claimBtn=document.getElementById('dailyClaimBtn');
-  if(claimBtn){claimBtn.disabled=state.dailyClaimed;claimBtn.textContent=state.dailyClaimed?'Claimed today ✓':'Claim Day '+(state.streak+1)+' Reward';}
+  if(claimBtn){claimBtn.disabled=state.dailyClaimed;claimBtn.textContent=state.dailyClaimed?'Claimed today ✓':'Claim Day '+Math.min((Number(state.streak)||0)+1,7)+' Reward';}
 }
+function todayStr(){return new Date().toISOString().slice(0,10);}
+// Daily reward — server-authoritative (claim_daily_reward): one per calendar day,
+// the streak advances automatically and the FC is credited to THIS user's account.
 function claimDaily(){
-  if(!requireAuth('Sign in to claim your daily reward'))return;
+  if(!state.user){ state._pendingReward='daily'; closeModal('dailyModal'); toast('Sign in to claim your daily reward','login'); go('login'); return; }
   if(state.dailyClaimed)return;
-  const fc=DAILY_LADDER[Math.min(state.streak,DAILY_LADDER.length-1)];
-  state.streak++;state.dailyClaimed=true;state.balance+=fc;
-  syncBalance();grantXP(20,'daily');renderDaily();var dcd=document.getElementById('dailyCtaDay');if(dcd)dcd.textContent=state.streak+1;
-var ml=document.getElementById('mLogo');if(ml)ml.src=ASSETS.pca;var mc2=document.getElementById('mCoin');if(mc2)mc2.src=ASSETS.fc;
-  addNotif('updates','local_fire_department','var(--live)','rgba(238,16,69,.1)','Day '+state.streak+' streak! +'+fc+' FC','Come back tomorrow to keep your streak alive.');
-  toast('+'+fc+' FC · Day '+state.streak+' streak 🔥','local_fire_department');
-  txData.unshift({date:'Today',time:'now',desc:'Daily Reward',sub:'Day '+state.streak+' streak',type:'redemption',amt:fc,bal:state.balance,ic:'local_fire_department',col:'var(--live)',bg:'rgba(238,16,69,.1)'});
-  renderTx();
+  const btn=document.getElementById('dailyClaimBtn'); if(btn)btn.disabled=true;
+  _sb.rpc('claim_daily_reward').then(({data,error})=>{
+    if(error){
+      if(/already claimed/i.test(error.message||'')){ state.dailyClaimed=true; renderDaily(); toast('You already claimed today — come back tomorrow','info'); return; }
+      if(btn)btn.disabled=false; toast(error.message||'Could not claim reward','error'); return;
+    }
+    const day=Number(data&&data.day)||(state.streak+1), fc=Number(data&&data.fc)||0;
+    state.streak=day; state.dailyClaimed=true;
+    if(data&&data.balance!=null){state.balance=Number(data.balance);syncBalance();}
+    if(state.profile){state.profile.streak_count=day;state.profile.last_daily_claim=todayStr();}
+    renderDaily();
+    addNotif('updates','local_fire_department','var(--live)','rgba(238,16,69,.1)','Day '+day+' streak! +'+fc+' FC','Come back tomorrow to keep your streak alive.');
+    toast('+'+fc+' FC · Day '+day+' streak 🔥','local_fire_department');
+    if(typeof loadTransactions==='function')loadTransactions();
+  }).catch(()=>{ if(btn)btn.disabled=false; toast('Could not claim reward','error'); });
 }
-/* welcome onboarding (once per session) */
+// Welcome 500 FC — server-authoritative (claim_welcome_bonus): once per user, ever.
+function claimWelcome(){
+  if(!state.user){ state._pendingReward='welcome'; closeModal('welcomeModal'); toast('Sign in to claim your 500 FC','login'); go('login'); return; }
+  _sb.rpc('claim_welcome_bonus').then(({data,error})=>{
+    if(error){ toast(error.message||'Could not claim bonus','error'); return; }
+    closeModal('welcomeModal');
+    if(state.profile)state.profile.welcome_bonus_claimed_at=new Date().toISOString();
+    if(data&&data.balance!=null){state.balance=Number(data.balance);syncBalance();}
+    if(data&&data.claimed){
+      addNotif('updates','celebration','var(--teal)','rgba(0,230,196,.12)','Welcome bonus: +500 FC','You unlocked the New Fan achievement.');
+      toast('+500 FC welcome bonus added 🎉','celebration');
+      if(typeof loadTransactions==='function')loadTransactions();
+    }
+    setTimeout(maybeShowDaily,350);
+  }).catch(()=>{ toast('Could not claim bonus','error'); });
+}
+// Mirror the server reward state onto the client after a profile load.
+function syncRewardStateFromProfile(){
+  if(!state.profile)return;
+  state.streak=Number(state.profile.streak_count)||0;
+  state.dailyClaimed=(state.profile.last_daily_claim===todayStr());
+  renderDaily();
+}
+// After a login triggered by tapping "claim", re-open the modal so it's credited.
+function reopenPendingReward(){
+  const p=state._pendingReward; if(!p)return; state._pendingReward=null;
+  if(p==='welcome'){ if(!(state.profile&&state.profile.welcome_bonus_claimed_at))setTimeout(()=>openModal('welcomeModal'),500); }
+  else if(p==='daily'){ if(!state.dailyClaimed)setTimeout(()=>openModal('dailyModal'),500); }
+}
+// Show the daily modal if today's reward is still available (once per session).
+function maybeShowDaily(){
+  if(state.user&&state.dailyClaimed)return;
+  if(sessionStorage.getItem('wc26_daily_shown'))return;
+  try{sessionStorage.setItem('wc26_daily_shown','1');}catch(e){}
+  setTimeout(()=>openModal('dailyModal'),350);
+}
+/* welcome onboarding — shows until claimed (server marks it claimed-once). */
 function runWelcome(){
-  if(sessionStorage.getItem('wc26_welcomed'))return;
+  // Already claimed by this signed-in user → never show again; offer the daily instead.
+  if(state.user&&state.profile&&state.profile.welcome_bonus_claimed_at){ maybeShowDaily(); return; }
+  if(sessionStorage.getItem('wc26_welcomed')){ return; }
   try{sessionStorage.setItem('wc26_welcomed','1');}catch(e){}
   setTimeout(()=>openModal('welcomeModal'),400);
-}
-function claimWelcome(){
-  state.balance+=500;syncBalance();grantXP(100,'welcome');
-  addNotif('updates','celebration','var(--teal)','rgba(0,230,196,.12)','Welcome bonus: +500 FC','You unlocked the New Fan achievement.');
-  txData.unshift({date:'Today',time:'now',desc:'Welcome Bonus',sub:'New fan reward',type:'redemption',amt:500,bal:state.balance,ic:'celebration',col:'var(--teal)',bg:'rgba(0,230,196,.12)'});
-  renderTx();closeModal('welcomeModal');
-  toast('+500 FC welcome bonus added 🎉','celebration');
-  setTimeout(()=>openModal('dailyModal'),350);
 }
 
 /* ════════ ODDS MOVEMENT → notifications ════════ */
