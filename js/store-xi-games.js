@@ -1,5 +1,7 @@
 /* ════════ MODALS / SHEET / TOAST ════════ */
-function openModal(id){document.getElementById(id).classList.add('open');document.body.style.overflow='hidden';}
+function openModal(id){document.getElementById(id).classList.add('open');document.body.style.overflow='hidden';
+  // pre-warm the checkout Edge Function when a purchase modal opens, so the Buy click is fast
+  if((id==='creditsModal'||id==='voteModal')&&typeof warmCheckout==='function')warmCheckout();}
 function closeModal(id){document.getElementById(id).classList.remove('open');document.body.style.overflow='';}
 function backdropClose(e,id){if(e.target===e.currentTarget){closeModal(id);}}
 function openSheet(){document.getElementById('moreSheet').classList.add('open');document.body.style.overflow='hidden';}

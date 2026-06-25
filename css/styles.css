@@ -442,6 +442,16 @@ body.player-full .app-header{display:none}
 .map-loading{height:230px;border-radius:24px;background:#E9E3FB;position:relative;overflow:hidden}
 .map-loading::after{content:'';position:absolute;inset:0;background:linear-gradient(100deg,transparent 35%,rgba(255,255,255,.5) 50%,transparent 65%);transform:translateX(-100%);animation:mapShimmer 1.4s infinite ease-in-out}
 @keyframes mapShimmer{to{transform:translateX(100%)}}
+/* Checkout loading overlay — instant feedback while the Stripe session is created
+   (the Edge Function can take a few seconds, and without this the button looks dead) */
+.co-loading{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;background:rgba(16,16,16,.32);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.co-loading.on{display:flex}
+/* same glass-frame outline as the other modals (.ps-sheet → .ps-inner): translucent 8px frame + dark inner */
+.co-loading-box{padding:8px;border-radius:28px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.16);box-shadow:0 18px 50px rgba(0,0,0,.32)}
+.co-inner{display:flex;flex-direction:column;align-items:center;gap:14px;padding:30px 36px;border-radius:20px;background:#121212}
+.co-spin{width:38px;height:38px;border-radius:50%;border:3px solid rgba(255,255,255,.18);border-top-color:#4331F4;animation:coSpin .7s linear infinite}
+@keyframes coSpin{to{transform:rotate(360deg)}}
+.co-loading-txt{font-family:'Poppins';font-weight:600;font-size:14px;color:#fff}
 .map-legend{display:flex;align-items:center;gap:8px;margin-top:8px}
 .map-grad{flex:1;height:6px;border-radius:var(--r-pill);background:linear-gradient(90deg,#EFEAFF,var(--purple))}
 .map-legend .caption{color:var(--ink-3);font-size:10px;font-weight:600}
@@ -825,9 +835,9 @@ body.player-full #playerDetail{padding-bottom:104px}
 .vp-feats li{display:flex;align-items:center;gap:14px;font-family:'Poppins',sans-serif;font-size:14px;font-weight:500;color:#fff}
 .vp-feats li .material-icons-round{font-size:20px;color:#fff}
 .vp-pop{display:inline-block;background:var(--purple);color:#fff;font-family:'Poppins',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;padding:5px 10px;border-radius:6px;margin:30px 0 12px}
-.vp-plan{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;width:100%;text-align:left;background:rgba(255,255,255,.03);border:1.5px solid rgba(255,255,255,.18);border-radius:16px;padding:17px 19px;cursor:pointer;color:#fff;transition:var(--t1)}
+.vp-plan{box-sizing:border-box;display:flex;align-items:flex-start;justify-content:space-between;gap:14px;width:100%;text-align:left;background:rgba(255,255,255,.03);border:1.5px solid rgba(255,255,255,.18);border-radius:16px;padding:17px 19px;cursor:pointer;color:#fff;transition:var(--t1)}
 .vp-plan:hover{background:rgba(255,255,255,.05)}
-.vp-plan.selected{border-color:rgba(255,255,255,.6)}
+.vp-plan.selected{border-color:#fff;border-width:4px} /* match the FC packs: white 4px stroke when selected */
 .vp-plan-name{font-size:17px;font-weight:800}
 .vp-plan-price{font-size:18px;font-weight:800;margin-top:7px}
 .vp-plan-per{font-size:13px;font-weight:500;color:rgba(255,255,255,.55)}
@@ -866,7 +876,7 @@ body.player-full #playerDetail{padding-bottom:104px}
 .fc-packs{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
 .fc-pack{box-sizing:border-box;display:flex;flex-direction:column;align-items:stretch;gap:4px;width:100%;min-height:123px;text-align:left;background:rgba(18,18,18,.64);border:2px solid rgba(255,255,255,.16);border-radius:28px;padding:24px;cursor:pointer;color:#fff;transition:var(--t1);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
 .fc-pack:hover{background:rgba(28,28,30,.7)}
-.fc-pack.selected{border-color:#fff} /* selected = white 100% stroke */
+.fc-pack.selected{border-color:#fff;border-width:4px} /* selected = white 100% stroke, 4px */
 .fc-pack-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;width:100%}
 .fc-pack-bottom{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%} /* badge + price share this row, gap 16 */
 .fc-pack-info{display:flex;flex-direction:column;gap:6px}
@@ -896,7 +906,8 @@ body.player-full #playerDetail{padding-bottom:104px}
 /* ── Get Fan Credits: bottom payment bar (Figma) ── */
 .fc-paybar{display:flex;flex-direction:column;align-items:center;gap:8px}
 .fc-paybar .vp-pay{margin-bottom:0}
-.fc-paybar .vp-pay.card{background:rgba(255,255,255,.04);border-radius:100px;height:48px;letter-spacing:-.08em;text-transform:capitalize}
+.fc-paybar .vp-pay.card{background:#fff;color:#121212;border-radius:100px;height:48px;letter-spacing:-.08em;text-transform:capitalize}
+.fc-paybar .vp-pay.card .material-icons-round{color:#121212} /* selected → white button, dark text + icon */
 .fc-paybar .vp-secure{margin-top:0;font-size:12px;font-weight:400}
 .fc-paybar .vp-secure .material-icons-round{font-size:14px}
 .fc-paybar .vp-legal{margin-top:0;display:flex;align-items:center;justify-content:center;gap:6px;font-size:10px}

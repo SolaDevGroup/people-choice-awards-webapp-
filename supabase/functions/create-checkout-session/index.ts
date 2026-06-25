@@ -37,10 +37,43 @@ const cors = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
+// Module-level cache: product → resolved { priceId, mode }. Stripe ids / recurring-ness don't
+// change during a container's life, so we resolve once per instance instead of on every click
+// (this is the bulk of the per-call latency — a products.retrieve + prices.list + prices.retrieve).
+const priceCache: Record<string, { priceId: string; mode: "subscription" | "payment" }> = {};
+async function resolvePrice(product: string, envKey: string) {
+  if (priceCache[product]) return priceCache[product];
+  let priceId = Deno.env.get(envKey) ?? "";
+  if (!priceId) throw new Error(`No Stripe id configured for "${product}" (${envKey})`);
+  if (priceId.startsWith("prod_")) {
+    const prod = await stripe.products.retrieve(priceId);
+    priceId = typeof prod.default_price === "string"
+      ? prod.default_price
+      : (prod.default_price as Stripe.Price | null)?.id ?? "";
+    if (!priceId) {
+      const prices = await stripe.prices.list({ product: prod.id, active: true, limit: 1 });
+      priceId = prices.data[0]?.id ?? "";
+    }
+  }
+  if (!priceId) throw new Error(`No price on product for "${product}"`);
+  const price = await stripe.prices.retrieve(priceId);
+  const entry = { priceId, mode: (price.recurring ? "subscription" : "payment") as "subscription" | "payment" };
+  priceCache[product] = entry;
+  return entry;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
-    const { product = "pass", player_id, origin: bodyOrigin } = await req.json().catch(() => ({}));
+    const body = await req.json().catch(() => ({}));
+    // Warmup ping: boots the container AND primes the Stripe connection + price cache (pass +
+    // the first FC pack), so the real click is just auth + sessions.create (~1s). No session made.
+    if (body && body.warmup) {
+      try { await resolvePrice("pass", CATALOG.pass.env); } catch (_) { /* ignore */ }
+      try { await resolvePrice("starter", CATALOG.starter.env); } catch (_) { /* ignore */ }
+      return json({ ok: true });
+    }
+    const { product = "pass", player_id, origin: bodyOrigin } = body;
     const origin = bodyOrigin || req.headers.get("origin") || "";
     const cfg = CATALOG[product as string];
     if (!cfg) return json({ error: `Unknown product: ${product}` }, 400);
@@ -54,23 +87,8 @@ Deno.serve(async (req) => {
     const { data: { user } } = await supa.auth.getUser();
     if (!user) return json({ error: "Not signed in" }, 401);
 
-    // Resolve a usable price id (env may hold a prod_… or a price_…).
-    let priceId = Deno.env.get(cfg.env) ?? "";
-    if (!priceId) return json({ error: `No Stripe id configured for "${product}" (${cfg.env})` }, 400);
-    if (priceId.startsWith("prod_")) {
-      const prod = await stripe.products.retrieve(priceId);
-      priceId = typeof prod.default_price === "string"
-        ? prod.default_price
-        : (prod.default_price as Stripe.Price | null)?.id ?? "";
-      if (!priceId) {
-        const prices = await stripe.prices.list({ product: prod.id, active: true, limit: 1 });
-        priceId = prices.data[0]?.id ?? "";
-      }
-    }
-    if (!priceId) return json({ error: `No price on product for "${product}"` }, 400);
-
-    const price = await stripe.prices.retrieve(priceId);
-    const mode = price.recurring ? "subscription" : "payment";
+    // Resolve the price (cached per container after the first call / warmup).
+    const { priceId, mode } = await resolvePrice(product, cfg.env);
     const ok = cfg.kind === "pass" ? "pass=success" : "fc=success";
     const no = cfg.kind === "pass" ? "pass=cancelled" : "fc=cancelled";
 

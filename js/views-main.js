@@ -284,18 +284,42 @@ async function populateSupporterPass(){
 // Generic Stripe Checkout. product: 'pass' | 'starter' | 'fan' | 'ultra' | 'legend' |
 // 'champion'. All route through Stripe-hosted Checkout (Apple Pay / Google Pay / card auto).
 // The server maps the product → its Stripe id + FC amount, so nothing is hard-coded here.
+// Pre-boot the checkout Edge Function (debounced) when a purchase modal opens, so the
+// imports/container are already hot and the real Buy click creates the session in ~1s
+// instead of a 5–6s cold start. The {warmup:true} ping returns early — no session made.
+let _lastWarm=0;
+function warmCheckout(){
+  if(typeof _sb==='undefined'||!_sb||!_sb.functions)return;
+  const now=Date.now();
+  if(now-_lastWarm<90000)return;   // at most once every 90s
+  _lastWarm=now;
+  try{ _sb.functions.invoke('create-checkout-session',{body:{warmup:true}}).catch(()=>{}); }catch(e){}
+}
+// Full-screen "Opening secure checkout…" overlay — instant, obvious feedback so the
+// button never reads as unclickable while the Edge Function builds the Stripe session.
+function showCheckoutLoading(){
+  let el=document.getElementById('coLoading');
+  if(!el){el=document.createElement('div');el.id='coLoading';el.className='co-loading';
+    el.innerHTML='<div class="co-loading-box"><div class="co-inner"><div class="co-spin"></div><div class="co-loading-txt">Opening secure checkout…</div></div></div>';
+    document.body.appendChild(el);}
+  el.classList.add('on');
+}
+function hideCheckoutLoading(){const el=document.getElementById('coLoading');if(el)el.classList.remove('on');}
+let _checkoutBusy=false;
 async function stripeCheckout(product,playerId){
   if(!requireAuth('Sign in to continue'))return;
   const pk=(typeof STRIPE_PUBLISHABLE_KEY!=='undefined'&&STRIPE_PUBLISHABLE_KEY)||'';
   if(!pk){toast('Payment setup pending — add your Stripe keys','lock');return;}
-  toast('Opening secure checkout…','lock');
+  if(_checkoutBusy)return;          // ignore repeat taps while a session is being created
+  _checkoutBusy=true;
+  showCheckoutLoading();            // show immediately, before the (multi-second) network call
   try{
     const {data,error}=await _sb.functions.invoke('create-checkout-session',{
       body:{product,origin:location.origin,player_id:playerId||null}});
-    if(error){const m=await fnErr(error);console.error('[checkout]',m);toast(m,'error');return;}
-    if(!data||!data.url){console.error('[checkout]',data);toast((data&&data.error)||'Could not start checkout','error');return;}
-    window.location.href=data.url; // → Stripe-hosted Checkout (Apple/Google Pay + card)
-  }catch(e){console.error('[checkout]',e);toast('Could not start checkout','error');}
+    if(error){const m=await fnErr(error);console.error('[checkout]',m);toast(m,'error');hideCheckoutLoading();_checkoutBusy=false;return;}
+    if(!data||!data.url){console.error('[checkout]',data);toast((data&&data.error)||'Could not start checkout','error');hideCheckoutLoading();_checkoutBusy=false;return;}
+    window.location.href=data.url; // → Stripe-hosted Checkout; overlay stays until the browser navigates away
+  }catch(e){console.error('[checkout]',e);toast('Could not start checkout','error');hideCheckoutLoading();_checkoutBusy=false;}
 }
 // Supporter Pass checkout (the paywall buttons). method is ignored — hosted Checkout shows
 // every wallet/card itself. We stash the pending player so the vote survives the redirect.
@@ -1112,7 +1136,7 @@ function lbRowHTML(p,rank){
   ].join('');
   const t = Number(p.trend)||0;
   const rankEl = rank<=4
-    ? `<span class="lb-rank lb-rank-badge"><img src="assets/leader${rank}.png?v=20260627o" alt="${rank}"></span>`
+    ? `<span class="lb-rank lb-rank-badge"><img src="assets/leader${rank}.png?v=20260627r" alt="${rank}"></span>`
     : `<span class="lb-rank">${rank}</span>`;
   return `<div class="lb-row${medal}" onclick="openPlayer('${p.id}','leaderboard')">
     ${rankEl}
@@ -1125,7 +1149,7 @@ function lbRowHTML(p,rank){
   </div>`;
 }
 function renderLeaderboard(){
-  const lg=document.getElementById('lbLogo');if(lg&&!lg.getAttribute('src'))lg.src='assets/word_logo.svg?v=20260627o';
+  const lg=document.getElementById('lbLogo');if(lg&&!lg.getAttribute('src'))lg.src='assets/word_logo.svg?v=20260627r';
   if(state.ltab==='players'){
     lbList.innerHTML=players.slice(0,25).map((p,i)=>lbRowHTML(p,i+1)).join('');
   }else if(state.ltab==='fans'){
