@@ -94,7 +94,10 @@ async function enhanceStarPhotos(){
 }
 function playerBaseVotes(p){
   const nm=String(p.name||'').toLowerCase();
-  for(let i=0;i<STAR_VOTES.length;i++){ if(nm.indexOf(STAR_VOTES[i][0])>=0) return Math.round(STAR_VOTES[i][1]*1e6); }
+  // Add a deterministic sub-0.5M wobble so the headline totals read organically
+  // (32.3M, 31.4M, 30.2M…) instead of round 32.0M/31.0M. It's bounded to 0.08–0.49M,
+  // under the 0.5M minimum gap between star tiers, so the popularity ranking is untouched.
+  for(let i=0;i<STAR_VOTES.length;i++){ if(nm.indexOf(STAR_VOTES[i][0])>=0){ const off=(_hashStr(p.id||p.name||'')%42 + 8)/100; return Math.round((STAR_VOTES[i][1]+off)*1e6); } }
   // non-stars sit well below the stars, lightly ordered by form so the mid-table isn't flat
   const perf=(Number(p.goals)||0)*1 + (Number(p.assists)||0)*0.7 + (Number(p.matches)||0)*0.2 + (Number(p.gpm)||0)*2;
   const spread=0.9 + (_hashStr(p.id||p.name||'')%1000)/1000*0.3; // 0.9–1.2 deterministic wobble
