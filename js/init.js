@@ -46,7 +46,7 @@ setTimeout(custPromoPop,9000); // promote customization
       if(fc==='cancelled'){setTimeout(()=>toast('Purchase cancelled','info'),700);return;}
       const refresh=async()=>{ if(state.user)await loadProfile(state.user.id); };
       setTimeout(refresh,1200);
-      setTimeout(async()=>{await refresh();toast('Fan Credits added to your balance 🎉','toll');},3600);
+      setTimeout(async()=>{await refresh();let fc=0,before=0;try{fc=Number(localStorage.getItem('pendingFcAmount'))||0;before=Number(localStorage.getItem('pendingFcBefore'))||0;localStorage.removeItem('pendingFcAmount');localStorage.removeItem('pendingFcBefore');}catch(e){}if(typeof showPurchaseSuccess==='function')showPurchaseSuccess({kind:'pack',fc,before});},3600);
       return;
     }
     if(p==='cancelled'){setTimeout(()=>toast('Checkout cancelled','info'),700);return;}
@@ -69,7 +69,7 @@ setTimeout(custPromoPop,9000); // promote customization
         try{localStorage.removeItem('pendingVotePlayer');}catch(e){}
         await loadVoteCounts();players.sort(rankCmp);
         renderVoteList();renderFeatured();renderHomePodium();renderHomeTrending();renderLeaderboard();
-        toast('Supporter Pass active — your vote now counts! 🎉','celebration');
+        if(typeof showPurchaseSuccess==='function')showPurchaseSuccess({kind:'pass'});
         return;
       }
       if(tries>=6){toast('Payment received — finalizing your pass…','lock');return;}

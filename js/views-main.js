@@ -97,6 +97,27 @@ function prowHTML(p,rank){
     </button>
   </div>`;
 }
+// ── Header live search: suggest players as you type → click opens player detail ──
+function headerSearch(q){
+  const box=document.getElementById('hdrSearchSugg'); if(!box) return;
+  q=(q||'').toLowerCase().trim();
+  if(!q){ box.classList.remove('on'); box.innerHTML=''; return; }
+  const pool=(typeof players!=='undefined'&&players)?players:[];
+  const list=pool.filter(p=>((p.name||'').toLowerCase().includes(q)||(p.country||'').toLowerCase().includes(q))).slice(0,6);
+  if(!list.length){ box.innerHTML='<div class="search-sugg-empty">No players found</div>'; box.classList.add('on'); return; }
+  box.innerHTML=list.map(p=>{
+    const flag=flagImg(p.country,14);
+    return `<button class="search-sugg-item" onmousedown="event.preventDefault()" onclick="pickHeaderPlayer('${p.id}')">
+      ${avatarHTML(p,36)}
+      <span class="ss-info"><span class="ss-name">${p.name}</span><span class="ss-meta">${flag}<span>${p.country||''}${p.num?' · #'+p.num:''}</span></span></span>
+      <span class="material-icons-round ss-chev">chevron_right</span>
+    </button>`;
+  }).join('');
+  box.classList.add('on');
+}
+function pickHeaderPlayer(id){ const inp=document.getElementById('hdrSearch'); if(inp)inp.value=''; closeHeaderSearch(); if(typeof openPlayer==='function')openPlayer(id,'home'); }
+function headerSearchEnter(q){ closeHeaderSearch(); go('vote'); const ps=document.getElementById('playerSearch'); if(ps)ps.value=q||''; if(typeof renderVoteList==='function')renderVoteList(); }
+function closeHeaderSearch(){ const box=document.getElementById('hdrSearchSugg'); if(box)box.classList.remove('on'); }
 function setPos(pos){state.pos=pos;document.querySelectorAll('#posChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.pos===pos));renderVoteList();}
 function fillDropdowns(){
   const cs=[...new Set(players.map(p=>p.country).filter(Boolean))].sort();
@@ -1136,7 +1157,7 @@ function lbRowHTML(p,rank){
   ].join('');
   const t = Number(p.trend)||0;
   const rankEl = rank<=4
-    ? `<span class="lb-rank lb-rank-badge"><img src="assets/leader${rank}.png?v=20260627r" alt="${rank}"></span>`
+    ? `<span class="lb-rank lb-rank-badge"><img src="assets/leader${rank}.png?v=20260627v" alt="${rank}"></span>`
     : `<span class="lb-rank">${rank}</span>`;
   return `<div class="lb-row${medal}" onclick="openPlayer('${p.id}','leaderboard')">
     ${rankEl}
@@ -1149,7 +1170,7 @@ function lbRowHTML(p,rank){
   </div>`;
 }
 function renderLeaderboard(){
-  const lg=document.getElementById('lbLogo');if(lg&&!lg.getAttribute('src'))lg.src='assets/word_logo.svg?v=20260627r';
+  const lg=document.getElementById('lbLogo');if(lg&&!lg.getAttribute('src'))lg.src='assets/word_logo.svg?v=20260627v';
   if(state.ltab==='players'){
     lbList.innerHTML=players.slice(0,25).map((p,i)=>lbRowHTML(p,i+1)).join('');
   }else if(state.ltab==='fans'){

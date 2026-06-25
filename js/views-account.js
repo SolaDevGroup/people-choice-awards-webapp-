@@ -150,8 +150,35 @@ const PACK_KEYS=['starter','fan','ultra','legend','champion'];
 function buyPack(i){
   if(!requireAuth('Sign in to buy Fan Credits'))return;
   const key=PACK_KEYS[i]; if(!key)return;
+  // stash the pack's FC amount + the balance BEFORE buying, so the success modal can show
+  // "existing + added" even if the webhook credit hasn't propagated yet.
+  try{const pk=(typeof fcPacks!=='undefined')&&fcPacks[i]; if(pk)localStorage.setItem('pendingFcAmount',String(pk.fc)); localStorage.setItem('pendingFcBefore',String(Number(state.balance)||0));}catch(e){}
   // Real Stripe Checkout → the webhook credits the FC to the profile on success.
   stripeCheckout(key);
+}
+// Success confirmation after returning from Stripe Checkout. kind:'pack' shows the FC added +
+// new balance; kind:'pass' confirms voting access. Uses the shared glass-frame modal + fonts.
+function showPurchaseSuccess(opts){
+  opts=opts||{};
+  const t=document.getElementById('purchaseTitle'),m=document.getElementById('purchaseMsg'),
+        d=document.getElementById('purchaseDetail'),val=document.getElementById('purchaseDetailVal');
+  if(!t)return;
+  if(opts.kind==='pass'){
+    t.textContent='Voting Access Unlocked';
+    m.innerHTML='Your <strong>Supporter Pass</strong> is active — your vote now counts!';
+    if(d)d.style.display='none';
+  }else{
+    const fc=Number(opts.fc)||0;
+    const before=Number(opts.before)||0;
+    const reloaded=Number(state.balance)||0;
+    // prefer the real credited balance once the webhook has propagated; otherwise show existing + added
+    const newBal=reloaded>before?reloaded:(before+fc);
+    t.textContent='Payment Successful';
+    m.innerHTML=fc?`<strong>${fc.toLocaleString()} FC</strong> has been added to your balance.`:'Your Fan Credits have been added to your balance.';
+    if(d)d.style.display='flex'; // restore the row layout (don't clear → that drops the flex)
+    if(val)val.textContent=newBal.toLocaleString()+' FC';
+  }
+  if(typeof openModal==='function')openModal('purchaseModal');
 }
 function syncBalance(){
   navBalance.textContent=fmt(state.balance);
