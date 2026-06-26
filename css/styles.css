@@ -1704,6 +1704,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{ou
   /* PRODUCT: image left (sticky), details/customization right */
   #view-product .pd2-hero{grid-column:1;position:sticky;top:88px;border-radius:16px}
   .pd-col-info{grid-column:2}
+  #view-product .pd-col-info>.pd2-sec:first-child{margin-top:5px}
   /* ORDER: form left, summary right (sticky) */
   .ord-col-form{grid-column:1}
   .ord-col-side{grid-column:2;position:sticky;top:88px}
