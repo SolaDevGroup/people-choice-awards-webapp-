@@ -120,8 +120,8 @@ function go(v){
   const inMore=['markets','compare','notifications','analytics','signup','login','profile','startingxi','games','settings','transactions'].includes(v);
   document.getElementById('moreBtn').classList.toggle('active',inMore);
   if(window.innerWidth<1024)closeMenu();
-  // Player Detail has its OWN header + no footer/decor — hide the global chrome there, show elsewhere.
-  const isPlayer=(v==='player');
+  // Player / Product / Order detail pages have their OWN header/footer — hide the global chrome there.
+  const isPlayer=(v==='player'||v==='product'||v==='order');
   const fb=document.querySelector('.footer'),db=document.querySelector('.decor-bar');
   const mh=document.querySelector('.m-header'),hd=document.querySelector('.header-decor');
   const st=document.getElementById('storeTicker');

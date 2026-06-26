@@ -26,6 +26,7 @@ if(typeof renderStoreTicker==='function')renderStoreTicker(); // seed the Fan St
  window.addEventListener('scroll',onScroll,{passive:true});
  window.scrollTo(0,0);onScroll();})();
 loadCatalog(); // live catalog (player photos come from photo_hd → FotMob, set by scripts/enrich-photos.mjs)
+if(typeof loadStoreProducts==='function')loadStoreProducts(); // Fan Store jerseys from public.store_products
 setInterval(refreshOdds,20000); // real odds refresh (no fake simulation)
 setInterval(refreshLeaderboard,60000); // real leaderboard rank movement (matches "every 60s")
 setInterval(refreshFixtures,45000); // keep today's games + LIVE badges current

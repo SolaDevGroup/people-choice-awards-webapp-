@@ -313,7 +313,12 @@ function renderAuthUI(){
   // Sidebar identity chip: real user when signed in, a Log in prompt otherwise.
   const sp=document.getElementById('sbProfile');
   if(sp){
-    if(signedIn){
+    if(!state.authReady && !signedIn){
+      // Session not resolved yet — show a quiet placeholder instead of wrongly flashing "Log in".
+      sp.onclick=null;
+      sp.innerHTML=`<div class="profile-avatar"></div>
+        <div style="text-align:left;"><div style="font-size:13px;font-weight:700;">&nbsp;</div><div class="caption">&nbsp;</div></div>`;
+    }else if(signedIn){
       const name=(state.profile&&(state.profile.display_name||state.profile.username))||state.user.email;
       const lvl=(state.profile&&REP_LEVEL_NAMES[state.profile.reputation_level])||'Fan';
       sp.onclick=()=>go('profile');
@@ -326,24 +331,40 @@ function renderAuthUI(){
     }
   }
   const pa=document.getElementById('profileAuth');
-  if(pa)pa.innerHTML=signedIn
+  if(pa)pa.innerHTML=(!state.authReady&&!signedIn)?'':signedIn
     ? `<button class="btn btn-secondary btn-block" onclick="signOut()">Sign Out</button>`
     : `<button class="btn btn-primary btn-block" onclick="go('login')">Log in</button>
        <button class="btn btn-secondary btn-block" onclick="go('signup')" style="margin-top:8px;">Create Account</button>`;
   const sa=document.getElementById('sheetAuth');
-  if(sa)sa.innerHTML=signedIn
+  if(sa)sa.innerHTML=(!state.authReady&&!signedIn)?'':signedIn
     ? `<button class="sheet-item" onclick="closeSheet();signOut()"><span class="material-icons-outlined">logout</span>Sign Out<span class="material-icons-round chev">chevron_right</span></button>`
     : `<button class="sheet-item" onclick="closeSheet();go('login')"><span class="material-icons-outlined">login</span>Log in<span class="material-icons-round chev">chevron_right</span></button>
        <button class="sheet-item" onclick="closeSheet();go('signup')"><span class="material-icons-outlined">person_add</span>Create Account<span class="material-icons-round chev">chevron_right</span></button>`;
 }
 
-// Listen for auth changes (also fires once on every page load with the restored session).
+// Auth changes AFTER first load (sign in / out / token refresh). The INITIAL_SESSION
+// event is intentionally ignored here — on a cold load it can fire before the session
+// has settled (leaving the sidebar stuck on "Log in" until a manual reload). First-load
+// restore is handled deterministically by the getSession() bootstrap just below.
 _sb.auth.onAuthStateChange(async (event,session)=>{
+  if(event==='INITIAL_SESSION')return;
   state.user=session?session.user:null;
   if(session){await loadProfile(session.user.id);}
   else{state.profile=null;state.balance=0;syncBalance();loadUserCosmetics();}
-  renderAuthUI();
+  state.authReady=true;renderAuthUI();
 });
+
+// Deterministic first-load session restore. getSession() awaits the client's full init
+// (incl. any token refresh) and reads the persisted session, so it reflects the real
+// signed-in state on the very first paint — no "logged out until you reload" flash.
+(async function restoreSession(){
+  try{
+    const {data:{session}}=await _sb.auth.getSession();
+    state.user=session?session.user:null;
+    if(session)await loadProfile(session.user.id);
+  }catch(e){}
+  state.authReady=true;renderAuthUI();
+})();
 
 /* ════════ SUPABASE CATALOG (players · teams · markets) ════════ */
 // Source of truth is Supabase. The hardcoded arrays above are a seed fallback so

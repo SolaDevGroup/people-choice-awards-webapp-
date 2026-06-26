@@ -1,0 +1,130 @@
+-- ===========================================================================
+-- Store products catalog. We LIST the WC26 national-team jerseys here and link
+-- out to a third-party store (projerseyshop.cn) for the actual purchase.
+-- image_url / buy_url are filled from that store (see scripts/import-store-images.mjs).
+-- ===========================================================================
+create table if not exists public.store_products (
+  product_id      text primary key,                 -- e.g. MEX-H-2026
+  grp             text,                              -- World Cup group A–L
+  team            text not null,
+  jersey_type     text not null,                     -- Home | Away
+  product_name    text not null,
+  custom_name     boolean not null default true,
+  custom_number   boolean not null default true,
+  official_badges boolean not null default true,
+  image_url       text,                              -- fetched from the store
+  buy_url         text,                              -- third-party product page
+  price_fc        integer,                           -- optional FC price (set later)
+  active          boolean not null default true,
+  sort_order      integer,
+  created_at      timestamptz not null default now()
+);
+
+alter table public.store_products enable row level security;
+drop policy if exists "read store_products" on public.store_products;
+create policy "read store_products" on public.store_products for select using (true);
+grant select on public.store_products to anon, authenticated;
+
+-- Seed: 48 teams × {Home, Away} = 96 jerseys. All support custom name/number + official badges.
+insert into public.store_products (grp, team, product_id, jersey_type, product_name, custom_name, custom_number, official_badges, sort_order) values
+('A','Mexico','MEX-H-2026','Home','Mexico 2026 Home Jersey',true,true,true,1),
+('A','Mexico','MEX-A-2026','Away','Mexico 2026 Away Jersey',true,true,true,2),
+('A','South Africa','RSA-H-2026','Home','South Africa 2026 Home Jersey',true,true,true,3),
+('A','South Africa','RSA-A-2026','Away','South Africa 2026 Away Jersey',true,true,true,4),
+('A','South Korea','KOR-H-2026','Home','South Korea 2026 Home Jersey',true,true,true,5),
+('A','South Korea','KOR-A-2026','Away','South Korea 2026 Away Jersey',true,true,true,6),
+('A','Czechia','CZE-H-2026','Home','Czechia 2026 Home Jersey',true,true,true,7),
+('A','Czechia','CZE-A-2026','Away','Czechia 2026 Away Jersey',true,true,true,8),
+('B','Canada','CAN-H-2026','Home','Canada 2026 Home Jersey',true,true,true,9),
+('B','Canada','CAN-A-2026','Away','Canada 2026 Away Jersey',true,true,true,10),
+('B','Qatar','QAT-H-2026','Home','Qatar 2026 Home Jersey',true,true,true,11),
+('B','Qatar','QAT-A-2026','Away','Qatar 2026 Away Jersey',true,true,true,12),
+('B','Switzerland','SUI-H-2026','Home','Switzerland 2026 Home Jersey',true,true,true,13),
+('B','Switzerland','SUI-A-2026','Away','Switzerland 2026 Away Jersey',true,true,true,14),
+('B','Bosnia and Herzegovina','BIH-H-2026','Home','Bosnia and Herzegovina 2026 Home Jersey',true,true,true,15),
+('B','Bosnia and Herzegovina','BIH-A-2026','Away','Bosnia and Herzegovina 2026 Away Jersey',true,true,true,16),
+('C','Brazil','BRA-H-2026','Home','Brazil 2026 Home Jersey',true,true,true,17),
+('C','Brazil','BRA-A-2026','Away','Brazil 2026 Away Jersey',true,true,true,18),
+('C','Morocco','MAR-H-2026','Home','Morocco 2026 Home Jersey',true,true,true,19),
+('C','Morocco','MAR-A-2026','Away','Morocco 2026 Away Jersey',true,true,true,20),
+('C','Haiti','HAI-H-2026','Home','Haiti 2026 Home Jersey',true,true,true,21),
+('C','Haiti','HAI-A-2026','Away','Haiti 2026 Away Jersey',true,true,true,22),
+('C','Scotland','SCO-H-2026','Home','Scotland 2026 Home Jersey',true,true,true,23),
+('C','Scotland','SCO-A-2026','Away','Scotland 2026 Away Jersey',true,true,true,24),
+('D','USA','USA-H-2026','Home','USA 2026 Home Jersey',true,true,true,25),
+('D','USA','USA-A-2026','Away','USA 2026 Away Jersey',true,true,true,26),
+('D','Paraguay','PAR-H-2026','Home','Paraguay 2026 Home Jersey',true,true,true,27),
+('D','Paraguay','PAR-A-2026','Away','Paraguay 2026 Away Jersey',true,true,true,28),
+('D','Australia','AUS-H-2026','Home','Australia 2026 Home Jersey',true,true,true,29),
+('D','Australia','AUS-A-2026','Away','Australia 2026 Away Jersey',true,true,true,30),
+('D','Türkiye','TUR-H-2026','Home','Türkiye 2026 Home Jersey',true,true,true,31),
+('D','Türkiye','TUR-A-2026','Away','Türkiye 2026 Away Jersey',true,true,true,32),
+('E','Germany','GER-H-2026','Home','Germany 2026 Home Jersey',true,true,true,33),
+('E','Germany','GER-A-2026','Away','Germany 2026 Away Jersey',true,true,true,34),
+('E','Curaçao','CUR-H-2026','Home','Curaçao 2026 Home Jersey',true,true,true,35),
+('E','Curaçao','CUR-A-2026','Away','Curaçao 2026 Away Jersey',true,true,true,36),
+('E','Ivory Coast','CIV-H-2026','Home','Ivory Coast 2026 Home Jersey',true,true,true,37),
+('E','Ivory Coast','CIV-A-2026','Away','Ivory Coast 2026 Away Jersey',true,true,true,38),
+('E','Ecuador','ECU-H-2026','Home','Ecuador 2026 Home Jersey',true,true,true,39),
+('E','Ecuador','ECU-A-2026','Away','Ecuador 2026 Away Jersey',true,true,true,40),
+('F','Netherlands','NED-H-2026','Home','Netherlands 2026 Home Jersey',true,true,true,41),
+('F','Netherlands','NED-A-2026','Away','Netherlands 2026 Away Jersey',true,true,true,42),
+('F','Japan','JPN-H-2026','Home','Japan 2026 Home Jersey',true,true,true,43),
+('F','Japan','JPN-A-2026','Away','Japan 2026 Away Jersey',true,true,true,44),
+('F','Tunisia','TUN-H-2026','Home','Tunisia 2026 Home Jersey',true,true,true,45),
+('F','Tunisia','TUN-A-2026','Away','Tunisia 2026 Away Jersey',true,true,true,46),
+('F','Sweden','SWE-H-2026','Home','Sweden 2026 Home Jersey',true,true,true,47),
+('F','Sweden','SWE-A-2026','Away','Sweden 2026 Away Jersey',true,true,true,48),
+('G','Iran','IRN-H-2026','Home','Iran 2026 Home Jersey',true,true,true,49),
+('G','Iran','IRN-A-2026','Away','Iran 2026 Away Jersey',true,true,true,50),
+('G','New Zealand','NZL-H-2026','Home','New Zealand 2026 Home Jersey',true,true,true,51),
+('G','New Zealand','NZL-A-2026','Away','New Zealand 2026 Away Jersey',true,true,true,52),
+('G','Belgium','BEL-H-2026','Home','Belgium 2026 Home Jersey',true,true,true,53),
+('G','Belgium','BEL-A-2026','Away','Belgium 2026 Away Jersey',true,true,true,54),
+('G','Egypt','EGY-H-2026','Home','Egypt 2026 Home Jersey',true,true,true,55),
+('G','Egypt','EGY-A-2026','Away','Egypt 2026 Away Jersey',true,true,true,56),
+('H','Spain','ESP-H-2026','Home','Spain 2026 Home Jersey',true,true,true,57),
+('H','Spain','ESP-A-2026','Away','Spain 2026 Away Jersey',true,true,true,58),
+('H','Cape Verde','CPV-H-2026','Home','Cape Verde 2026 Home Jersey',true,true,true,59),
+('H','Cape Verde','CPV-A-2026','Away','Cape Verde 2026 Away Jersey',true,true,true,60),
+('H','Saudi Arabia','KSA-H-2026','Home','Saudi Arabia 2026 Home Jersey',true,true,true,61),
+('H','Saudi Arabia','KSA-A-2026','Away','Saudi Arabia 2026 Away Jersey',true,true,true,62),
+('H','Uruguay','URU-H-2026','Home','Uruguay 2026 Home Jersey',true,true,true,63),
+('H','Uruguay','URU-A-2026','Away','Uruguay 2026 Away Jersey',true,true,true,64),
+('I','France','FRA-H-2026','Home','France 2026 Home Jersey',true,true,true,65),
+('I','France','FRA-A-2026','Away','France 2026 Away Jersey',true,true,true,66),
+('I','Senegal','SEN-H-2026','Home','Senegal 2026 Home Jersey',true,true,true,67),
+('I','Senegal','SEN-A-2026','Away','Senegal 2026 Away Jersey',true,true,true,68),
+('I','Norway','NOR-H-2026','Home','Norway 2026 Home Jersey',true,true,true,69),
+('I','Norway','NOR-A-2026','Away','Norway 2026 Away Jersey',true,true,true,70),
+('I','Iraq','IRQ-H-2026','Home','Iraq 2026 Home Jersey',true,true,true,71),
+('I','Iraq','IRQ-A-2026','Away','Iraq 2026 Away Jersey',true,true,true,72),
+('J','Argentina','ARG-H-2026','Home','Argentina 2026 Home Jersey',true,true,true,73),
+('J','Argentina','ARG-A-2026','Away','Argentina 2026 Away Jersey',true,true,true,74),
+('J','Algeria','ALG-H-2026','Home','Algeria 2026 Home Jersey',true,true,true,75),
+('J','Algeria','ALG-A-2026','Away','Algeria 2026 Away Jersey',true,true,true,76),
+('J','Austria','AUT-H-2026','Home','Austria 2026 Home Jersey',true,true,true,77),
+('J','Austria','AUT-A-2026','Away','Austria 2026 Away Jersey',true,true,true,78),
+('J','Jordan','JOR-H-2026','Home','Jordan 2026 Home Jersey',true,true,true,79),
+('J','Jordan','JOR-A-2026','Away','Jordan 2026 Away Jersey',true,true,true,80),
+('K','Portugal','POR-H-2026','Home','Portugal 2026 Home Jersey',true,true,true,81),
+('K','Portugal','POR-A-2026','Away','Portugal 2026 Away Jersey',true,true,true,82),
+('K','Uzbekistan','UZB-H-2026','Home','Uzbekistan 2026 Home Jersey',true,true,true,83),
+('K','Uzbekistan','UZB-A-2026','Away','Uzbekistan 2026 Away Jersey',true,true,true,84),
+('K','Colombia','COL-H-2026','Home','Colombia 2026 Home Jersey',true,true,true,85),
+('K','Colombia','COL-A-2026','Away','Colombia 2026 Away Jersey',true,true,true,86),
+('K','DR Congo','COD-H-2026','Home','DR Congo 2026 Home Jersey',true,true,true,87),
+('K','DR Congo','COD-A-2026','Away','DR Congo 2026 Away Jersey',true,true,true,88),
+('L','England','ENG-H-2026','Home','England 2026 Home Jersey',true,true,true,89),
+('L','England','ENG-A-2026','Away','England 2026 Away Jersey',true,true,true,90),
+('L','Croatia','CRO-H-2026','Home','Croatia 2026 Home Jersey',true,true,true,91),
+('L','Croatia','CRO-A-2026','Away','Croatia 2026 Away Jersey',true,true,true,92),
+('L','Ghana','GHA-H-2026','Home','Ghana 2026 Home Jersey',true,true,true,93),
+('L','Ghana','GHA-A-2026','Away','Ghana 2026 Away Jersey',true,true,true,94),
+('L','Panama','PAN-H-2026','Home','Panama 2026 Home Jersey',true,true,true,95),
+('L','Panama','PAN-A-2026','Away','Panama 2026 Away Jersey',true,true,true,96)
+on conflict (product_id) do update set
+  grp=excluded.grp, team=excluded.team, jersey_type=excluded.jersey_type,
+  product_name=excluded.product_name, custom_name=excluded.custom_name,
+  custom_number=excluded.custom_number, official_badges=excluded.official_badges,
+  sort_order=excluded.sort_order;
