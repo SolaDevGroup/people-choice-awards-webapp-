@@ -78,20 +78,29 @@ function buyMerch(id){
 /* ── Product detail page (store merch → jersey customization, 1:1 Figma) ── */
 const PD_ADDON_FC=350; // each customization add-on
 let pdProduct=null;
-let pdOpts={badge:true,name:true,num:true};
+let pdOpts={badge:true,name:true,num:true,size:'M'};
 function openProduct(id){
   const m=merch.find(x=>x.id===id); if(!m)return;
-  pdProduct=m; pdOpts={badge:m.official_badges!==false,name:m.custom_name!==false,num:m.custom_number!==false};
+  pdProduct=m; pdOpts={badge:m.official_badges!==false,name:m.custom_name!==false,num:m.custom_number!==false,size:'M'};
   renderProduct(); go('product');
+}
+// jersey size picker (XS–XXL); M is the default
+function pdSize(btn,size){
+  pdOpts.size=size;
+  document.querySelectorAll('#pdSizes .pd2-size').forEach(b=>b.classList.toggle('on',b===btn));
+}
+function syncPdSize(){
+  document.querySelectorAll('#pdSizes .pd2-size').forEach(b=>b.classList.toggle('on',b.dataset.size===pdOpts.size));
 }
 function renderProduct(){
   const m=pdProduct; if(!m)return;
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   set('pdTitle', m.title||m.name);
-  set('pdId', m.id);
+  // the real store product ID (trailing number in the buy link); fall back to our SKU
+  const storeId=((m.buy_url||'').match(/\/(\d+)\/?$/)||[])[1];
+  set('pdId', storeId||m.id);
   set('pdDesc', '100% polyester');
-  const pp=document.getElementById('pdPrice');
-  if(pp)pp.innerHTML=`${fcCoin}<span class="pd2-price-amt">${fmt(m.fc)}</span><span class="pd2-price-fcu">FC</span><span class="pd2-price-usd">$${(m.fc/100).toFixed(2)}</span>`;
+  pdRenderPrice();
   // hero: real product photo if we have it, else the jersey emoji on the gradient
   const img=document.getElementById('pdImg'), emo=document.getElementById('pdEmoji');
   if(m.image){ if(img){img.src=m.image;img.style.display='';} if(emo)emo.textContent=''; }
@@ -102,6 +111,7 @@ function renderProduct(){
   const ar=document.getElementById('pdArrive');
   if(ar){const d=new Date(Date.now()+7*24*3600*1000);ar.textContent='Arrives as soon as '+d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});}
   syncPdSwitches();
+  syncPdSize();
   pdUpdateCTA();
 }
 function syncPdSwitches(){
@@ -111,7 +121,15 @@ function syncPdSwitches(){
   if(nb)nb.style.display=pdOpts.name?'flex':'none';
   if(xb)xb.style.display=pdOpts.num?'flex':'none';
 }
-function pdToggle(k){pdOpts[k]=!pdOpts[k];syncPdSwitches();pdUpdateCTA();}
+// total add-on credits for the toggles currently on (each = PD_ADDON_FC)
+function pdAddons(){return (pdOpts.badge?PD_ADDON_FC:0)+(pdOpts.name?PD_ADDON_FC:0)+(pdOpts.num?PD_ADDON_FC:0);}
+// price shown live = jersey + selected add-ons, so toggling visibly adds the credits
+function pdRenderPrice(){
+  const m=pdProduct, pp=document.getElementById('pdPrice'); if(!m||!pp)return;
+  const total=m.fc+pdAddons();
+  pp.innerHTML=`${fcCoin}<span class="pd2-price-amt">${fmt(total)}</span><span class="pd2-price-fcu">FC</span><span class="pd2-price-usd">$${(total/100).toFixed(2)}</span>`;
+}
+function pdToggle(k){pdOpts[k]=!pdOpts[k];syncPdSwitches();pdRenderPrice();pdUpdateCTA();}
 function pdSync(){pdUpdateCTA();}
 // Button stays disabled until every ON toggle that has an input is filled.
 function pdReady(){
@@ -124,9 +142,11 @@ function getYourItems(){
   if(!pdReady())return; // guard (button is disabled, but just in case)
   if(!requireAuth('Sign in to order'))return;
   const m=pdProduct; if(!m)return;
+  const nm=pdOpts.name?(((document.getElementById('pdNameInp')||{}).value)||'').replace(/\b\w/g,c=>c.toUpperCase()):'';
+  const nu=pdOpts.num?((document.getElementById('pdNumInp')||{}).value||''):'';
   orderCtx={ product:m, base:m.fc,
     addons:(pdOpts.badge?PD_ADDON_FC:0)+(pdOpts.name?PD_ADDON_FC:0)+(pdOpts.num?PD_ADDON_FC:0),
-    name:(document.getElementById('pdNameInp')||{}).value||'', number:(document.getElementById('pdNumInp')||{}).value||'' };
+    badges:pdOpts.badge, name:nm, number:nu, size:pdOpts.size };
   ordOpts={express:true,insurance:true};
   renderOrder(); go('order');
 }
@@ -137,17 +157,17 @@ let ordOpts={express:true,insurance:true};
 function ordCompute(){
   if(!orderCtx)return null;
   const item=orderCtx.base, extras=orderCtx.addons;
-  const express=ordOpts.express?150:0, insurance=ordOpts.insurance?150:0, service=10;
+  const express=ordOpts.express?2000:0, insurance=ordOpts.insurance?350:0;
+  const service=Math.round(item*0.10); // service fee = 10% of the item credits
   const subtotal=item+extras+express+insurance+service;
-  const discount=-Math.round(subtotal*0.10);
-  return {item,extras,express,insurance,service,subtotal,discount,net:subtotal+discount};
+  return {item,extras,express,insurance,service,subtotal,net:subtotal};
 }
 function renderOrder(){
   if(!orderCtx)return;
   const m=orderCtx.product;
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   const fcf=n=>fmt(Math.abs(n))+' FC';
-  set('ordTitle', m.name);
+  set('ordTitle', m.title||m.name); // full product name, same as the product detail header
   // prefill email (editable); the other shipping fields are empty inputs the user fills in
   const emInp=document.getElementById('ordEmail'); if(emInp&&!emInp.value)emInp.value=(state.user&&state.user.email)||'';
   // default country + phone dial code to Switzerland (persists once the user picks another)
@@ -163,7 +183,7 @@ function renderOrder(){
   const c=ordCompute();
   set('ordItem', fcf(c.item)); set('ordExtras', fcf(c.extras));
   set('ordExpress', fcf(c.express)); set('ordInsurance', fcf(c.insurance));
-  set('ordService', fcf(c.service)); set('ordDiscount', '-'+fcf(c.discount));
+  set('ordService', fcf(c.service));
   set('ordNet', fcf(c.net));
   set('ordBalance', Number(state.balance||0).toLocaleString('en-US',{minimumFractionDigits:2})+' FC');
   const days=ordOpts.express?7:14, d=new Date(Date.now()+days*24*3600*1000);
@@ -171,7 +191,7 @@ function renderOrder(){
   set('ordArrive', 'Arrives as soon as '+d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}));
   // any field edit re-checks the CTA (delegated, wired once)
   const body=document.querySelector('#view-order .pd2-body');
-  if(body&&!body._ordWired){body._ordWired=true;body.addEventListener('input',ordUpdateCTA);}
+  if(body&&!body._ordWired){body._ordWired=true;body.addEventListener('input',function(e){ordFilterField(e.target);ordUpdateCTA();});}
   ordSyncSwitches();
   ordUpdateCTA();
 }
@@ -181,17 +201,50 @@ function ordSyncSwitches(){
   if(i){i.classList.toggle('on',!!ordOpts.insurance);i.setAttribute('aria-checked',ordOpts.insurance?'true':'false');}
 }
 function ordToggle(k){ ordOpts[k]=!ordOpts[k]; renderOrder(); }
-function placeOrder(){
-  if(!orderReady())return; // guard (button is disabled, but just in case)
+// Full order payload (product + chosen add-ons + shipping) — stored on the order row
+// and emailed to fulfilment. No prices here; the email omits credits/price entirely.
+function ordBuildOrder(){
+  const m=orderCtx.product;
+  const v=id=>(((document.getElementById(id)||{}).value)||'').trim();
+  const storeId=((m.buy_url||'').match(/\/(\d+)\/?$/)||[])[1]||m.id;
+  return {
+    product_id:storeId, product_name:m.title||m.name, image:m.image||'', team:m.team||'', jersey_type:m.type||'', size:orderCtx.size||'M',
+    addons:{ badges:!!orderCtx.badges, name:orderCtx.name||'', number:orderCtx.number||'' },
+    express:!!ordOpts.express, insurance:!!ordOpts.insurance,
+    contact:{ email:v('ordEmail'), phone:((orderCtx&&orderCtx.dial)||'')+' '+ordPhoneDigits() },
+    shipping:{ firstname:v('ordFirst'), lastname:v('ordLast'), country:(orderCtx&&orderCtx.country)||'',
+      state:v('ordState'), city:v('ordCity'), zip:v('ordZip'), street:v('ordStreet'),
+      street_number:v('ordStreetNo'), building_number:v('ordBuildNo'), floor:v('ordFloor') }
+  };
+}
+async function placeOrder(){
+  if(!orderReady()||!orderCtx)return; // guard (button is disabled, but just in case)
   if(!requireAuth('Sign in to order'))return;
-  if(!orderCtx)return;
   const c=ordCompute();
   if(state.balance<c.net){toast('Not enough Fan Credits','error');openModal('creditsModal');return;}
-  state.balance-=c.net; if(state.owned)state.owned.add(orderCtx.product.id); syncBalance();
-  if(typeof grantXP==='function')grantXP(5,'merch');
-  if(typeof renderMerch==='function')renderMerch();
-  toast(`${orderCtx.product.team} ${orderCtx.product.name} ordered! 🎉`,'redeem');
-  go('store');
+  const btn=document.getElementById('ordCta'); if(btn)btn.disabled=true;
+  const order=ordBuildOrder();
+  try{
+    // Server-authoritative: deducts the credits + records it in the ledger (transaction
+    // history) + stores the order, all atomically. Returns the new balance + order id.
+    const {data,error}=await _sb.rpc('place_merch_order',{p_order:order,p_fc:c.net});
+    if(error){toast(error.message||'Could not place order','error'); if(btn)btn.disabled=false; return;}
+    if(data&&typeof data.balance!=='undefined'){state.balance=Number(data.balance);syncBalance();}
+    if(state.owned)state.owned.add(orderCtx.product.id);
+    if(typeof grantXP==='function')grantXP(5,'merch');
+    if(typeof loadTransactions==='function')loadTransactions(); // refresh history with the purchase
+    // Fulfilment email — fire-and-forget, never blocks the confirmation.
+    try{ _sb.functions.invoke('send-order-email',{body:{order:Object.assign({order_id:(data&&data.order_id)||''},order)}}).catch(()=>{}); }catch(e){}
+    showOrderSuccess(order.product_name);
+  }catch(e){ toast('Could not place order','error'); if(btn)btn.disabled=false; }
+}
+function showOrderSuccess(name){
+  const e=document.getElementById('osProduct'); if(e)e.textContent=name||'jersey';
+  if(typeof openModal==='function')openModal('orderSuccessModal');
+}
+function closeOrderSuccess(){
+  if(typeof closeModal==='function')closeModal('orderSuccessModal');
+  orderCtx=null; go('store');
 }
 
 /* ── Country / dial-code picker (full-screen searchable modal) ── */
@@ -242,13 +295,27 @@ function phoneValid(){
   return exp?d.length===exp:(d.length>=6&&d.length<=14);
 }
 function orderReady(){
-  const filled=id=>{const e=document.getElementById(id);return !!(e&&e.value&&e.value.trim());};
-  const email=((document.getElementById('ordEmail')||{}).value||'').trim();
-  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))return false;
-  if(!phoneValid())return false;
-  return ['ordFirst','ordLast','ordState','ordCity','ordZip','ordStreet','ordStreetNo','ordBuildNo','ordFloor'].every(filled);
+  const val=id=>(((document.getElementById(id)||{}).value)||'').trim();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(val('ordEmail')))return false;     // real email
+  if(!phoneValid())return false;                                          // digits, correct length per country
+  if(val('ordFirst').length<2||val('ordLast').length<2)return false;      // names need ≥2 letters
+  if(val('ordZip').length<3)return false;                                 // postal code ≥3 chars
+  return ['ordState','ordCity','ordStreet','ordStreetNo','ordBuildNo','ordFloor'].every(id=>val(id).length>0);
 }
 function ordUpdateCTA(){const b=document.getElementById('ordCta');if(b)b.disabled=!orderReady();}
+// Per-field input sanitisation — each field only keeps characters relevant to it.
+const ORD_FILTER={ordFirst:'name',ordLast:'name',ordState:'name',ordCity:'name',ordZip:'zip',ordStreet:'street',ordStreetNo:'alnum',ordBuildNo:'alnum',ordFloor:'alnum',ordPhoneInp:'digits'};
+function ordFilterField(el){
+  if(!el||!el.id) return;
+  const t=ORD_FILTER[el.id]; if(!t) return;
+  let v=el.value;
+  if(t==='name')        v=v.replace(/[^\p{L} '.\-]/gu,'');         // letters, space, apostrophe, dot, hyphen
+  else if(t==='digits') v=v.replace(/\D/g,'');                     // 0-9 only (phone)
+  else if(t==='alnum')  v=v.replace(/[^a-zA-Z0-9]/g,'').toUpperCase(); // 10, 12A
+  else if(t==='zip')    v=v.replace(/[^a-zA-Z0-9 \-]/g,'').toUpperCase(); // international postal codes
+  else if(t==='street') v=v.replace(/[^\p{L}0-9 '.,\-\/#]/gu,'');  // street name (may carry numbers)
+  if(v!==el.value){ const p=Math.max(0,(el.selectionStart||v.length)-(el.value.length-v.length)); el.value=v; try{el.setSelectionRange(p,p);}catch(_){} }
+}
 
 /* ════════ STARTING XI (4-3-3) ════════ */
 const XI_FORMATION=[

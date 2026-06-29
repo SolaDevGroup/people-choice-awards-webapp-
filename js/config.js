@@ -20,4 +20,5 @@
   const STRIPE_PUBLISHABLE_KEY   = "pk_live_51PNjntRrXj8bYHvWFTclT0OyxHcVD3Umsj5k0Cadrb4KsvwRBFBkUlwl9VH1bxcNBu11EynogKUDSLNdBe9gUJze00OxEK6LY3"; // browser-safe
   const STRIPE_SUPPORTER_PASS_ID = "prod_Ui8qolJhD4Az8I"; // Stripe product id (server resolves its price) — not secret
   // ⚠️ STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET are intentionally NOT here — they would be
+  
   // exposed to every visitor. They live in Supabase → Edge Functions → Secrets (set on deploy).

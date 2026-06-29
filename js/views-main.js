@@ -1157,7 +1157,7 @@ function lbRowHTML(p,rank){
   ].join('');
   const t = Number(p.trend)||0;
   const rankEl = rank<=4
-    ? `<span class="lb-rank lb-rank-badge"><img src="assets/leader${rank}.png?v=20260628ae" alt="${rank}"></span>`
+    ? `<span class="lb-rank lb-rank-badge"><img src="assets/leader${rank}.png?v=20260628ba" alt="${rank}"></span>`
     : `<span class="lb-rank">${rank}</span>`;
   return `<div class="lb-row${medal}" onclick="openPlayer('${p.id}','leaderboard')">
     ${rankEl}
@@ -1170,9 +1170,9 @@ function lbRowHTML(p,rank){
   </div>`;
 }
 function renderLeaderboard(){
-  const lg=document.getElementById('lbLogo');if(lg&&!lg.getAttribute('src'))lg.src='assets/word_logo.svg?v=20260628ae';
+  const lg=document.getElementById('lbLogo');if(lg&&!lg.getAttribute('src'))lg.src='assets/word_logo.svg?v=20260628ba';
   if(state.ltab==='players'){
-    lbList.innerHTML=players.slice(0,25).map((p,i)=>lbRowHTML(p,i+1)).join('');
+    lbList.innerHTML=players.filter(isFavoritePlayer).slice(0,25).map((p,i)=>lbRowHTML(p,i+1)).join('');
   }else if(state.ltab==='fans'){
     lbList.innerHTML=fans.map((f,i)=>`
     <div class="lb-row${i<3?' lb-r'+(i+1):''}${f.me?' lb-me':''}" style="cursor:default;">

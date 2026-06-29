@@ -26,7 +26,9 @@ async function createAccount(){
   const {data,error}=await _sb.auth.signUp({
     email:suEmail.value.trim(),
     password:suPass.value,
-    options:{data:{display_name:suName.value.trim(),country,dob}}
+    // emailRedirectTo = where the confirmation link lands (must also be in Supabase →
+    // Auth → URL Configuration → Redirect URLs, or Supabase ignores it and uses Site URL).
+    options:{data:{display_name:suName.value.trim(),country,dob},emailRedirectTo:location.origin+location.pathname}
   });
   btn.textContent='Create Account';validateSignup();
   if(error){toast(error.message,'error');return;}
@@ -39,10 +41,22 @@ async function createAccount(){
     toast('Welcome to WC26!','celebration');
     go('home');
   }else{
-    // Email confirmation on → they must verify before logging in.
-    toast('Check your email to verify your account ✓','mail');
+    // Email confirmation on → send them to login behind a modal that tells them to check
+    // their inbox AND spam folder (our confirmation mail can still land in spam early on).
     go('login');
+    if(typeof showVerifyEmailModal==='function')showVerifyEmailModal(suEmail.value.trim());
+    else toast('Check your email to verify your account ✓','mail');
   }
+}
+
+// "Check your email" modal after signup — sets the address + opens it.
+function showVerifyEmailModal(email){
+  const e=document.getElementById('veEmail');
+  if(e)e.textContent=email||'your email';
+  if(typeof openModal==='function')openModal('verifyEmailModal');
+}
+function closeVerifyEmail(){
+  if(typeof closeModal==='function')closeModal('verifyEmailModal');
 }
 
 // UI handler for the login view.
@@ -463,6 +477,11 @@ async function loadMarketPredictors(){
     if(typeof renderHomeMarkets==='function')renderHomeMarkets();
   }catch(e){}
 }
+// Squad members who aren't actually playing WC26 — dropped from the roster so the
+// leaderboard/vote list stay believable (WC26 favourites only). e.g. Neymar is in Brazil's
+// pool but isn't playing. Matched as a lowercase name substring; extend as needed.
+const PLAYER_EXCLUDE=['neymar'];
+function isExcludedPlayer(p){const n=String((p&&p.name)||'').toLowerCase();return PLAYER_EXCLUDE.some(x=>n.includes(x));}
 async function loadCatalog(){
   // Markets render fast — load them on their own (NOT behind the heavy ~1,248-player
   // fetch) so the real odds (fc_allocated) show immediately instead of flashing 50/50.
@@ -494,7 +513,7 @@ async function loadCatalog(){
 
     // Players
     if(playersRes.data && playersRes.data.length){
-      players = playersRes.data.map(r=>mapPlayer(r, rankByPlayer)).sort(rankCmp);
+      players = playersRes.data.map(r=>mapPlayer(r, rankByPlayer)).filter(p=>!isExcludedPlayer(p)).sort(rankCmp);
       catalog.playersLoaded=true;
     } else if(playersRes.error){
       console.warn('[catalog] players load failed, keeping seed roster:', playersRes.error.message);

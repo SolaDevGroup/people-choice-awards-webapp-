@@ -76,16 +76,10 @@ async function findImage(team, type) {
   if (!list.length) return null;
   const slug = TEAM_SLUG[team] || team.replace(/ /g, '-');
   const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  // match tiers: clean base fan jersey → player/match variant (same design) → any team+type jersey.
-  // matched on normalized team prefix so accent/spacing differences don't block a hit.
-  const tn = norm(slug);
-  const tiers = [
-    e => new RegExp('^' + esc(slug) + '-' + type + '-Soccer-Fan-Jersey-World-Cup-2026$', 'i').test(e.slug),
-    e => norm(e.slug).startsWith(tn) && new RegExp(type + '-Soccer-(Fan|Match)-Jersey-World-Cup-2026$', 'i').test(e.slug),
-    e => norm(e.slug).startsWith(tn) && new RegExp(type + '.*Jersey-World-Cup-2026$', 'i').test(e.slug)
-  ];
-  let hit = null;
-  for (const ok of tiers) { hit = list.find(ok); if (hit) break; }
+  // STRICT: only the exact base Fan jersey for this team + kit. The slug names the team,
+  // so an exact match is guaranteed correct — no fuzzy fallback (which mismatched teams before).
+  const rx = new RegExp('^' + esc(slug) + '-' + type + '-Soccer-Fan-Jersey-World-Cup-2026$', 'i');
+  const hit = list.find(e => rx.test(e.slug));
   if (!hit) return null;
   const page = await req('GET', STORE + hit.path, { headers: { 'User-Agent': UA } });
   if (page.status >= 300) return null;
@@ -98,21 +92,25 @@ async function findImage(team, type) {
   return { image: og[1], buy: STORE + hit.path, price_fc };
 }
 
+// --rebuild: process EVERY row and CLEAR rows with no exact Fan-jersey match (wipes any
+// wrong data from earlier fuzzy matching). Default (no flag): only fill rows still missing.
+const REBUILD = new Set(process.argv.slice(2)).has('--rebuild');
 (async () => {
-  console.log('Store image import → ' + SB_URL + (FORCE ? '  (force)' : ''));
-  const filter = FORCE ? '' : '&or=(image_url.is.null,price_fc.is.null)';
+  console.log('Store image import → ' + SB_URL + (FORCE || REBUILD ? '  (rebuild — strict + clears non-matches)' : ''));
+  const filter = (FORCE || REBUILD) ? '' : '&or=(image_url.is.null,price_fc.is.null)';
   const rows = await sbGet(`store_products?select=product_id,team,jersey_type${filter}&order=sort_order&limit=200`);
-  console.log(`${rows.length} products to fetch`);
-  let ok = 0, miss = 0, errors = 0, done = 0;
+  console.log(`${rows.length} products to process`);
+  let ok = 0, cleared = 0, miss = 0, errors = 0, done = 0;
   for (const p of rows) {
     try {
       const r = await findImage(p.team, p.jersey_type);
-      if (r) { const f = { image_url: r.image, buy_url: r.buy }; if (r.price_fc) f.price_fc = r.price_fc; await sbPatch(p.product_id, f); ok++; }
+      if (r) { const f = { image_url: r.image, buy_url: r.buy, price_fc: r.price_fc ?? null }; await sbPatch(p.product_id, f); ok++; }
+      else if (REBUILD) { await sbPatch(p.product_id, { image_url: null, buy_url: null, price_fc: null }); cleared++; console.warn('  cleared (not on store):', p.product_id, '(' + p.team, p.jersey_type + ')'); }
       else { miss++; console.warn('  no match:', p.product_id, '(' + p.team, p.jersey_type + ')'); }
     } catch (e) { errors++; if (errors <= 5) console.warn('  err', p.product_id, e.message); }
     done++;
-    if (done % 10 === 0) console.log(`  ${done}/${rows.length} — ${ok} images, ${miss} unmatched`);
+    if (done % 10 === 0) console.log(`  ${done}/${rows.length} — ${ok} set · ${cleared} cleared · ${miss} unmatched`);
     await sleep(1500); // gentle — the store throttles rapid requests
   }
-  console.log(`Done. images set: ${ok} · unmatched: ${miss} · errors: ${errors}`);
+  console.log(`Done. set: ${ok} · cleared: ${cleared} · unmatched: ${miss} · errors: ${errors}`);
 })().catch(e => { console.error('Failed:', e.message); process.exit(1); });

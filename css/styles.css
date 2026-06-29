@@ -969,6 +969,18 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   justify-content:center;margin:0 auto 18px;animation:pop 450ms cubic-bezier(.18,1.25,.4,1)}
 @keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
 .success-ring .material-icons-round{font-size:38px;color:#fff}
+/* "Check your email" spam callout */
+.ve-spam{display:flex;gap:8px;align-items:flex-start;text-align:left;margin-top:16px;padding:12px 14px;
+  border-radius:14px;background:rgba(18,18,18,.04);font-family:'Poppins';font-weight:400;font-size:13px;
+  line-height:1.55;color:var(--ink-2)}
+.ve-spam-ic{font-size:18px;color:var(--gold);flex:none;margin-top:1px}
+.ve-spam strong{color:var(--ink);font-weight:600}
+.ve-spam-word{background:var(--gold);color:#121212;font-weight:700;padding:0 6px;border-radius:6px;white-space:nowrap}
+/* "Order placed" delivery ETA callout */
+.os-eta{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:16px;padding:12px 14px;
+  border-radius:14px;background:rgba(11,168,74,.1);font-family:'Poppins';font-weight:400;font-size:13px;line-height:1.4;color:var(--ink-2)}
+.os-eta .material-icons-round{font-size:18px;color:var(--green,#0BA84A)}
+.os-eta strong{color:var(--ink);font-weight:600}
 .brand-shapes{position:relative;height:64px;overflow:hidden;border-radius:0 0 24px 24px}
 .brand-shapes i{position:absolute;display:block}
 
@@ -1661,6 +1673,15 @@ button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{ou
 .pd2-note .material-icons-outlined,.pd2-fcline .material-icons-outlined{font-size:13px;color:rgba(18,18,18,.48)}
 /* customization toggles */
 .pd2-custs{display:flex;flex-direction:column;gap:16px}
+/* size picker */
+.pd2-sizewrap{display:flex;flex-direction:column;gap:10px}
+.pd2-size-lbl{font-family:'Poppins';font-weight:400;font-size:16px;line-height:1;color:#121212}
+.pd2-sizes{display:flex;align-items:center;gap:8px;height:64px}
+.pd2-size{flex:1 1 0;min-width:0;height:64px;min-height:64px;border:none;border-radius:12px;
+  background:rgba(18,18,18,.04);cursor:pointer;padding:12px 8px;
+  font-family:'Poppins';font-weight:500;font-size:20px;line-height:1.25;text-transform:capitalize;color:#121212;
+  display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s}
+.pd2-size.on{background:#121212;color:#fff}
 .pd2-cust{display:flex;flex-direction:column;gap:8px}
 .pd2-cust-row{display:flex;align-items:center;gap:12px}
 .pd2-cust-info{flex:1;display:flex;flex-direction:column;gap:4px;min-width:0}
@@ -1674,17 +1695,18 @@ button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{ou
 .pd2-switch.on .pd2-knob{transform:translateX(20px)}
 /* name / number entry (shown only when its toggle is on) */
 .pd2-entry{cursor:text}
-.pd2-input{box-sizing:border-box;width:100%;height:16px;min-height:16px;border:none;background:none;outline:none;padding:0;margin:0;font-family:'Poppins';font-weight:500;font-size:16px;line-height:16px;color:#121212;text-decoration:none;-webkit-appearance:none;appearance:none}
+.pd2-input{box-sizing:border-box;width:100%;height:auto;min-height:22px;border:none;background:none;outline:none;padding:0;margin:0;font-family:'Poppins';font-weight:500;font-size:16px;line-height:1.4;color:#121212;text-decoration:none;-webkit-appearance:none;appearance:none}
+.pd2-input-cap{text-transform:capitalize}
 .pd2-input:focus,.pd2-input:focus-visible{outline:none}
 .pd2-input::placeholder{color:rgba(18,18,18,.4);text-transform:none;font-weight:400} /* placeholder regular; typed value stays medium (500) */
 /* fixed footer CTA */
 .pd2-footer{position:fixed;left:0;right:0;bottom:0;z-index:30;background:#fff;display:flex;justify-content:center;padding:12px 12px calc(20px + env(safe-area-inset-bottom,0px))}
-.pd2-cta{box-sizing:border-box;width:100%;max-width:456px;min-height:48px;border:none;border-radius:100px;background:#121212;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:7px 12px;transition:transform var(--t1),background .2s ease,box-shadow .2s ease}
+.pd2-cta{box-sizing:border-box;width:100%;max-width:456px;min-height:48px;border:none;border-radius:100px;background:#121212;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:7px 12px;transition:transform var(--t1),background .2s ease,box-shadow .2s ease}
 .pd2-cta:active{transform:scale(.99)}
 /* disabled until every ON toggle's input is filled; enabled = the normal black/white active button */
 .pd2-cta:disabled{opacity:.4;cursor:not-allowed}
-.pd2-cta-t{font-family:'Poppins';font-weight:500;font-size:18px;line-height:1.3;color:#fff;text-transform:capitalize}
-.pd2-cta-s{font-family:'Poppins';font-weight:400;font-size:12px;line-height:1.2;color:rgba(255,255,255,.64)}
+.pd2-cta-t{font-family:'Poppins';font-weight:500;font-size:18px;line-height:1.15;color:#fff;text-transform:capitalize}
+.pd2-cta-s{font-family:'Poppins';font-weight:400;font-size:12px;line-height:1.1;color:rgba(255,255,255,.64)}
 /* The wrapper columns are layout-only on mobile (display:contents) so the single-column
    stack is byte-for-byte unchanged; on desktop they become the two grid columns below. */
 .pd2-deskcol{display:contents}

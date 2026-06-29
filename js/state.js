@@ -40,7 +40,7 @@ function _hashStr(s){let h=2166136261>>>0;s=String(s||'');for(let i=0;i<s.length
 // global popularity (the names fans actually search/vote for), each value in millions.
 // First matching name fragment wins, so list mega-stars first.
 const STAR_VOTES=[
-  ['messi',32],['cristiano ronaldo',31],['ronaldo',31],['mbappé',30],['mbappe',30],['neymar',27],
+  ['messi',32],['cristiano ronaldo',31],['ronaldo',31],['mbappé',30],['mbappe',30],
   ['haaland',26],['vinícius',25],['vinicius',25],['bellingham',24],['lamine yamal',23],['yamal',23],
   ['mohamed salah',22],['musiala',20],['harry kane',18],['h. kane',18],['pedri',17.5],
   ['bruno fernandes',16.5],['lautaro',16],['julián álvarez',15.5],['j. álvarez',15.5],
@@ -57,7 +57,7 @@ const STAR_VOTES=[
 // so we never risk showing the wrong face.
 const STAR_PHOTOS=[
   ['messi','Lionel Messi'],['cristiano ronaldo','Cristiano Ronaldo'],['ronaldo','Cristiano Ronaldo'],
-  ['mbappé','Kylian Mbappé'],['mbappe','Kylian Mbappé'],['neymar','Neymar'],['haaland','Erling Haaland'],
+  ['mbappé','Kylian Mbappé'],['mbappe','Kylian Mbappé'],['haaland','Erling Haaland'],
   ['vinícius','Vinícius Júnior'],['vinicius','Vinícius Júnior'],['bellingham','Jude Bellingham'],
   ['lamine yamal','Lamine Yamal'],['yamal','Lamine Yamal'],['mohamed salah','Mohamed Salah'],
   ['musiala','Jamal Musiala'],['harry kane','Harry Kane'],['h. kane','Harry Kane'],['pedri','Pedri'],
@@ -91,6 +91,13 @@ async function enhanceStarPhotos(){
     byTitle[t].forEach(p=>{p._hdDone=true;if(url){p.photoSd=p.photo;p.photo=url;changed=true;}});
   }));
   if(changed&&typeof renderAll==='function')renderAll();
+}
+// A "World Cup favourite" = one of the curated star nominees (STAR_VOTES). The leaderboard
+// (Fan Player of the Tournament) shows ONLY these — not the full 1,200-man squad pool.
+function isFavoritePlayer(p){
+  const nm=String((p&&p.name)||'').toLowerCase();
+  for(let i=0;i<STAR_VOTES.length;i++){ if(nm.indexOf(STAR_VOTES[i][0])>=0)return true; }
+  return false;
 }
 function playerBaseVotes(p){
   const nm=String(p.name||'').toLowerCase();
