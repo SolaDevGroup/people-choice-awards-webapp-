@@ -1781,6 +1781,13 @@ button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{ou
 .cpick-backdrop{align-items:stretch;justify-content:center;padding:0;background:rgba(16,16,16,.2)}
 .cpick{width:100%;max-width:480px;height:100%;background:#fff;display:flex;flex-direction:column;animation:cpickIn .25s ease}
 @keyframes cpickIn{from{transform:translateY(16px);opacity:.5}to{transform:translateY(0);opacity:1}}
+/* desktop: a contained, centered, rounded card with the same frosted glass-frame outline as the
+   other modals — blurred backdrop + an 8px translucent ring. Mobile (full-screen list) untouched. */
+@media(min-width:1024px){
+  .cpick-backdrop{align-items:center;padding:24px;background:rgba(16,16,16,.32);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+  .cpick{height:auto;max-height:calc(100vh - 48px);border-radius:24px;overflow:hidden;
+    box-shadow:0 0 0 8px rgba(255,255,255,.16), 0 24px 60px rgba(16,16,16,.28)}
+}
 .cpick-top{flex:none;display:flex;align-items:center;gap:12px;padding:calc(env(safe-area-inset-top,0px) + 16px) 16px 14px;box-shadow:0 1px 0 rgba(18,18,18,.06)}
 .cpick-search{flex:1;display:flex;align-items:center;gap:10px;height:48px;padding:0 18px;background:rgba(18,18,18,.04);border-radius:100px}
 .cpick-search .material-icons-outlined{font-size:22px;color:rgba(18,18,18,.5)}

@@ -21,7 +21,10 @@ const json = (b: unknown, s = 200) =>
 const esc = (v: unknown) =>
   String(v ?? "").replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]!));
 
-const TO = Deno.env.get("ORDER_TO_EMAIL") || "danishgoheer17@gmail.com";
+// Order goes to all of these (override with a comma-separated ORDER_TO_EMAIL secret).
+const TO = (Deno.env.get("ORDER_TO_EMAIL") ||
+  "danishgoheer17@gmail.com,viktorsola@sola-group.ch,projerseyshopofficial@gmail.com")
+  .split(",").map((s) => s.trim()).filter(Boolean);
 const FROM = Deno.env.get("ORDER_FROM_EMAIL") || "People Choice Award <no-reply@peoplechoiceaward.com>";
 const LOGO = Deno.env.get("ORDER_LOGO_URL") || "";
 
@@ -129,7 +132,7 @@ Deno.serve(async (req) => {
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: FROM, to: [TO], subject, html: buildHtml(o), text: buildText(o) }),
+      body: JSON.stringify({ from: FROM, to: TO, subject, html: buildHtml(o), text: buildText(o) }),
     });
     const data = await r.json().catch(() => ({}));
     if (r.status >= 300) return json({ error: data?.message || "send failed", detail: data }, 502);

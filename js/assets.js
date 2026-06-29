@@ -26,7 +26,7 @@ const ASSETS={
   }
 };
 // Brand assets provided by the user — override the bundled base64 (used everywhere via ASSETS.*).
-ASSETS.fc='assets/fc-coin.png?v=20260628ba';
-ASSETS.pca='assets/logo.png?v=20260628ba';
-ASSETS.logo='assets/logo.png?v=20260628ba';
+ASSETS.fc='assets/fc-coin.png?v=20260628bc';
+ASSETS.pca='assets/logo.png?v=20260628bc';
+ASSETS.logo='assets/logo.png?v=20260628bc';
 
