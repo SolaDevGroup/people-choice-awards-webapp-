@@ -17,6 +17,7 @@ initSplash();
 [navCoin,homeCoin,statCoin].forEach(el=>{if(el)el.src=ASSETS.fc;});
 document.querySelectorAll('.fc-coin').forEach(el=>{if(!el.src)el.src=ASSETS.fc;});
 buildXISlots();renderXI();fillDropdowns();fillCompareSelects();renderAll();observeReveals();
+if(typeof initLang==='function')initLang(); // apply saved language + RTL/LTR direction
 if(typeof renderStoreTicker==='function')renderStoreTicker(); // seed the Fan Store schedule ticker
 // Header progressive blur only kicks in once the page has scrolled under it.
 // scrollRestoration:manual stops Safari restoring a scroll position on load (which would

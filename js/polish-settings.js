@@ -544,17 +544,20 @@ const SET_PANELS={
       <button class="btn btn-secondary btn-block" style="margin-top:6px;" onclick="go('transactions')">Open Transaction History</button>
     </div>`,
 
-  language:()=>`
+  language:()=>{
+   const cur=(typeof state!=='undefined'&&state.lang)||'en';
+   return `
     <div class="card set-card">
-      <div class="set-card-title">Language</div>
-      ${['English','Français','Español','العربية','Português','Deutsch','日本語','中文'].map((l,i)=>`
-        <div class="radio-item ${i===0?'sel':''}" onclick="pickLang(this,'${l}')"><div class="radio-dot"></div><div style="flex:1;"><div class="ri-name">${l}</div></div></div>`).join('')}
+      <div class="set-card-title">${typeof t==='function'?t('set.langTitle'):'Language'}</div>
+      ${['English','Français','Español','العربية','Português','Deutsch','日本語','中文'].map(l=>{
+        const code=(typeof LANG_BY_NAME!=='undefined'&&LANG_BY_NAME[l])||'en';
+        return `<div class="radio-item ${code===cur?'sel':''}" onclick="pickLang(this,'${l}')"><div class="radio-dot"></div><div style="flex:1;"><div class="ri-name">${l}</div></div></div>`;}).join('')}
     </div>
     <div class="card set-card">
-      <div class="set-card-title">Region & Format</div>
+      <div class="set-card-title">${typeof t==='function'?t('set.regionTitle'):'Region & Format'}</div>
       ${pRow('public','Region','Content & matches relevant to you',pSelect(['United States','Middle East','Europe','South America']))}
       ${pRow('format_textdirection_r_to_l','Right-to-Left Layout','Auto-enabled for Arabic & Hebrew',pToggle(false))}
-    </div>`,
+    </div>`;},
 
   about:()=>`
     <div class="card set-card">
@@ -584,7 +587,12 @@ function toggleConn(btn,name){
   const on=btn.classList.toggle('connected');btn.textContent=on?'Connected':'Connect';
   toast(name+(on?' connected':' disconnected'),on?'link':'link_off');
 }
-function pickLang(el,lang){document.querySelectorAll('#settingsPanel .radio-item').forEach(r=>r.classList.remove('sel'));el.classList.add('sel');toast(lang+' selected','language');}
+function pickLang(el,lang){
+  document.querySelectorAll('#settingsPanel .radio-item').forEach(r=>r.classList.remove('sel'));el.classList.add('sel');
+  const code=(typeof LANG_BY_NAME!=='undefined'&&LANG_BY_NAME[lang])||'en';
+  if(typeof setLang==='function')setLang(code);   // swaps all [data-i18n] text + flips RTL/LTR
+  toast(lang+' selected','language');
+}
 function setSettingsPanel(key){
   state.setPanel=key;
   document.querySelectorAll('#settingsNav .set-nav-item').forEach(b=>b.classList.toggle('active',b.dataset.set===key));
@@ -593,8 +601,10 @@ function setSettingsPanel(key){
     el.innerHTML=(SET_PANELS[key]||SET_PANELS.account)();
     // Sign Out lives at the bottom of the Account panel, only when logged in.
     if(key==='account'&&state.user){
-      el.insertAdjacentHTML('beforeend','<button class="btn btn-secondary btn-block" onclick="signOut()" style="margin-top:16px;">Sign Out</button>');
+      const so=(typeof t==='function')?t('set.signout'):'Sign Out';
+      el.insertAdjacentHTML('beforeend',`<button class="btn btn-secondary btn-block" onclick="signOut()" style="margin-top:16px;">${so}</button>`);
     }
+    if(typeof applyI18n==='function')applyI18n(); // localize any [data-i18n] in the freshly rendered panel
   }
 }
 

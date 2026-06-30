@@ -1101,6 +1101,21 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   .bottom-nav{display:none}
   .menu-backdrop{display:none!important}
 }
+/* ════════ RTL (Arabic / Hebrew) ════════ — dir=rtl on <html> handles inline text flow;
+   these mirror the fixed desktop chrome (sidebar + content offset) to the right side. */
+body.rtl{direction:rtl}
+body.rtl .sidebar{left:auto;right:0;border-right:none;border-left:1px solid var(--border)}
+body.rtl .sb-link,body.rtl .nav-link,body.rtl .set-nav-item{text-align:right}
+@media(min-width:1024px){
+  body.rtl .page-body{margin-left:0;margin-right:248px}
+  body.rtl .footer{margin-left:0;margin-right:248px}
+  body.rtl .pd2-header,body.rtl .pd2-footer{left:auto;right:248px}
+  body.rtl .header-decor{left:auto;right:248px}
+}
+@media(max-width:1023px){
+  body.rtl .sidebar{right:0;left:auto;transform:translateX(100%)}
+  body.rtl .sidebar.open{transform:none}
+}
 /* <1024 tablet+mobile: off-canvas slide menu + mobile header + bottom nav */
 @media(max-width:1023px){
   .nav{display:none}

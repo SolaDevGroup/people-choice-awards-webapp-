@@ -14,7 +14,20 @@ function renderProfile(){
   renderProfileHero();updateChromeAvatars();
   badgeStrip.innerHTML=badges.map(b=>`
   <div class="badge-it ${b.locked?'locked':''}"><div class="badge-medal">${b.e}</div><div class="badge-it-n">${b.n}</div></div>`).join('');
-  achList.innerHTML=achievements.map(a=>`
+  // Achievements — completion driven by the user's REAL state (not hardcoded). The green
+  // tick only shows when the milestone is actually met; otherwise "In progress".
+  const _lvl=(state.profile&&state.profile.reputation_level)||1, _streak=Number(state.streak)||0;
+  const _achs=[
+    {i:'how_to_vote', n:'Cast Your Vote', done:!!state.myVote,
+      s:state.myVote?'Your vote is recorded':'Vote for your favourite player'},
+    {i:'workspace_premium', n:'Premium Supporter', done:!!state.hasPass,
+      s:state.hasPass?'Supporter Pass active':'Unlock the Supporter Pass'},
+    {i:'local_fire_department', n:'7-Day Voting Streak', done:_streak>=7,
+      s:_streak>=7?'7 days in a row':`${_streak} / 7 day streak`},
+    {i:'military_tech', n:'Gold Fan', done:_lvl>=4,
+      s:_lvl>=4?'Reached Gold Fan tier':'Reach the Gold Fan level'}
+  ];
+  achList.innerHTML=_achs.map(a=>`
   <div class="hist-row">
     <div class="hist-icon" style="background:${a.done?'rgba(11,168,74,.1)':'var(--grey-bg)'};">
       <span class="material-icons-round" style="color:${a.done?'var(--green)':'var(--ink-4)'};">${a.i}</span></div>
